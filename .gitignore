@@ -11,7 +11,7 @@ appsettings.Development.json
 # OS junk
 .DS_Store
 Thumbs.db
-/.vs/FinanceTracker
+/.vs/
 .vs/FinanceTracker/CopilotIndices/18.0.981.45449/CodeChunks.db-wal
 .vs/FinanceTracker/CopilotIndices/18.0.981.45449/SemanticSymbols.db-wal
 .vs/FinanceTracker/CopilotIndices/18.0.981.45449/CodeChunks.db-wal
