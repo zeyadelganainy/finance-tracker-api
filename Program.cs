@@ -23,3 +23,5 @@ app.MapOpenApi();
 app.MapScalarApiReference();
 
 app.Run();
+
+public partial class Program { }
