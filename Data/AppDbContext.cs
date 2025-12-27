@@ -11,4 +11,5 @@ public class AppDbContext : DbContext
     
     // Represents the Categories table in the database, mapped to the Category model, enabling CRUD operations, queries, and data manipulation.
     public DbSet<Category> Categories =>  Set<Category>();
+    public DbSet<Transaction> Transactions => Set<Transaction>();
 }
