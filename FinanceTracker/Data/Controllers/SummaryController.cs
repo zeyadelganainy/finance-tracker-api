@@ -13,7 +13,7 @@ public class SummaryController : ControllerBase
 
     // GET /summary/monthly?month=2025-12
     [HttpGet("monthly")]
-    public async Task<IActionResult> Monthly([FromQuery] string month)
+    public async Task<IActionResult> Monthly([FromQuery] string? month)
     {
         if (string.IsNullOrWhiteSpace(month))
             return BadRequest("month is required in format YYYY-MM");

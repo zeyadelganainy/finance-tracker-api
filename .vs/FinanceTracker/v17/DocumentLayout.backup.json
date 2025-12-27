@@ -22,12 +22,12 @@
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "FinanceTracker",
+              "Title": "FinanceTracker.csproj",
               "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker.csproj",
               "RelativeDocumentMoniker": "FinanceTracker.csproj",
               "ToolTip": "C:\\FinanceTracker\\FinanceTracker.csproj",
               "RelativeToolTip": "FinanceTracker.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABUAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAMAAAAZAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
               "WhenOpened": "2025-12-27T06:07:20.019Z",
               "EditorCaption": ""
@@ -42,8 +42,7 @@
               "RelativeToolTip": "..\\Program Files\\dotnet\\sdk\\8.0.403\\Sdks\\Microsoft.NET.Sdk\\targets\\Microsoft.NET.TargetFrameworkInference.targets",
               "ViewState": "AgIAAJ0AAAAAAAAAAAAvwKoAAAAEAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003801|",
-              "WhenOpened": "2025-12-27T06:07:12.06Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-12-27T06:07:12.06Z"
             }
           ]
         }
