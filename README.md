@@ -1,20 +1,58 @@
-# Finance Tracker API (V1)
+# Finance Tracker API
 
-A simple .NET 9 Web API + Supabase Postgres project to track categories and transactions and generate a monthly spending summary.
+A simple backend API built with **.NET 9** and **PostgreSQL (Supabase)** to track spending categories, transactions, and generate monthly summaries.
 
-## Features
-- Categories: create + list
-- Transactions: create + list (filter by date range)
-- Monthly summary: totals + expense breakdown by category
-- OpenAPI docs UI via Scalar
+This project is intentionally scoped small to demonstrate clean backend fundamentals:
+- database modeling
+- EF Core migrations
+- REST APIs
+- basic aggregation logic
+- CI setup
 
-## Tech
-- .NET 9 (ASP.NET Core Web API)
-- EF Core 9 + PostgreSQL (Supabase)
-- Migrations for schema changes
+---
 
-## Run locally
-1. Set your connection string in `appsettings.Development.json`:
+## Features (V1)
+
+- **Categories**
+  - Create categories
+  - List categories
+
+- **Transactions**
+  - Create income/expense transactions
+  - List transactions with optional date filtering
+
+- **Monthly Summary**
+  - Total income
+  - Total expenses
+  - Net total
+  - Expense breakdown by category
+
+- **API Documentation**
+  - OpenAPI UI via **Scalar**
+
+---
+
+## Tech Stack
+
+- **.NET 9** (ASP.NET Core Web API)
+- **Entity Framework Core 9**
+- **PostgreSQL** (Supabase)
+- **OpenAPI** (Scalar UI)
+- **GitHub Actions** (CI build)
+
+---
+
+## Running Locally
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/zeyadelganainy/finance-tracker-api.git
+cd finance-tracker-api
+```
+
+### 2. Configure database connection
+Create `appsettings.Development.json` (this file is ignored by Git):
+
 ```json
 {
   "ConnectionStrings": {
@@ -22,35 +60,70 @@ A simple .NET 9 Web API + Supabase Postgres project to track categories and tran
   }
 }
 ```
-2. Run migrations:
+
+> ⚠️ Never commit real connection strings.
+See .env.example for reference.
+
+### 3. Apply migrations
 
 ```bash
-    dotnet ef database update
+dotnet ef database update
 ```
 
-3. Start the API:
+### 4. Run the API
 
 ```bash
 dotnet run
 ```
 
-### API Docs
+---
 
-Scalar UI: http://localhost:5195/scalar
+## API Documentation
 
-OpenAPI JSON: http://localhost:5195/openapi/v1.json
+**Scalar UI:** http://localhost:5195/scalar
 
-### Endpoints (V1)
+**OpenAPI JSON:** http://localhost:5195/openapi/v1.json
 
-```
-GET /categories
+---
 
-POST /categories
+## API Endpoints (V1)
 
-GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD
+### Categories
+- `GET /categories` — List all categories
+- `POST /categories` — Create a new category
 
-POST /transactions
+### Transactions
+- `GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD` — List transactions with optional date filtering
+- `POST /transactions` — Create a new transaction
 
-GET /summary/monthly?month=YYYY-MM
+### Summary
+- `GET /summary/monthly?month=YYYY-MM` — Get monthly spending summary
 
-```
+---
+
+## CI/CD
+
+This repository includes a GitHub Actions workflow that:
+- Restores dependencies
+- Builds the project on every push and pull request
+
+---
+
+## Future Improvements
+
+- Authentication and user scoping
+- Pagination and validation improvements
+- Automated tests
+- Budgeting and analytics extensions
+
+---
+
+## Why This Project
+
+This project was built to demonstrate:
+- Understanding of backend architecture
+- Database-first thinking
+- Clean, maintainable APIs
+- Practical CI usage
+
+Rather than building a large, unfocused system, this API focuses on correctness, clarity, and incremental growth.
