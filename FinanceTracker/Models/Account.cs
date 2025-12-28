@@ -17,4 +17,8 @@ public class Account
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public List<AccountSnapshot> Snapshots { get; set; } = new();
+
+    public string? Ticker { get; set; }      // e.g. "AAPL", "GLD"
+    public string? AssetClass { get; set; }  // e.g. "stock", "gold", "crypto", "cash", "other"
+
 }

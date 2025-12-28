@@ -27,6 +27,13 @@ public class AppDbContext : DbContext
             e.HasIndex(x => new { x.AccountId, x.Date }).IsUnique();
             e.Property(x => x.Balance).HasPrecision(18, 2);
         });
+
+        modelBuilder.Entity<Account>(e =>
+        {
+            e.Property(x => x.Ticker).HasMaxLength(20);
+            e.Property(x => x.AssetClass).HasMaxLength(30);
+        });
+
     }
 
 }
