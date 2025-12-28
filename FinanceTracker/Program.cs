@@ -9,8 +9,9 @@ builder.Services.AddControllers();
 // .NET 9 built-in OpenAPI document
 builder.Services.AddOpenApi();
 
-// Only register PostgreSQL if not in test environment
-if (builder.Environment.EnvironmentName != "Test")
+// Use in-memory database for Test and Development environments
+// Use PostgreSQL only for Production
+if (builder.Environment.IsDevelopment())
 {
     builder.Services.AddDbContext<AppDbContext>(options =>
         options.UseNpgsql(builder.Configuration.GetConnectionString("Default")));

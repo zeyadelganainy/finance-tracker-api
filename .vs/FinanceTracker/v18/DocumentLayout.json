@@ -3,16 +3,20 @@
   "WorkspaceRootPath": "C:\\FinanceTracker\\",
   "Documents": [
     {
+      "AbsoluteMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|c:\\financetracker\\financetracker\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|solutionrelative:financetracker\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|c:\\financetracker\\financetracker\\data\\controllers\\summarycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|solutionrelative:financetracker\\data\\controllers\\summarycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{DD38CDF5-34F7-4387-AE57-13C486B5AA86}|FinanceTracker.Tests\\FinanceTracker.Tests.csproj|c:\\financetracker\\financetracker.tests\\summarycontrollertests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DD38CDF5-34F7-4387-AE57-13C486B5AA86}|FinanceTracker.Tests\\FinanceTracker.Tests.csproj|solutionrelative:financetracker.tests\\summarycontrollertests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DD38CDF5-34F7-4387-AE57-13C486B5AA86}|FinanceTracker.Tests\\FinanceTracker.Tests.csproj|c:\\financetracker\\financetracker.tests\\customwebapplicationfactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{DD38CDF5-34F7-4387-AE57-13C486B5AA86}|FinanceTracker.Tests\\FinanceTracker.Tests.csproj|solutionrelative:financetracker.tests\\customwebapplicationfactory.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|c:\\financetracker\\financetracker\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|solutionrelative:financetracker\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{DD38CDF5-34F7-4387-AE57-13C486B5AA86}|FinanceTracker.Tests\\FinanceTracker.Tests.csproj|c:\\financetracker\\financetracker.tests\\categoriescontrollertests.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -27,8 +31,8 @@
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:.github\\workflows\\ci.yml||{06C066C6-04A2-4E5D-8202-439FD4234EF1}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|c:\\financetracker\\financetracker\\data\\controllers\\summarycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|solutionrelative:financetracker\\data\\controllers\\summarycontroller.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|c:\\financetracker\\financetracker\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}",
+      "RelativeMoniker": "D:0:0:{E2F43301-FBCE-B68A-297F-3E6BC41AF78F}|FinanceTracker\\FinanceTracker.csproj|solutionrelative:financetracker\\appsettings.development.json||{90A6B3A7-C1A3-4009-A288-E2FF89E96FA0}"
     }
   ],
   "DocumentGroupContainers": [
@@ -46,33 +50,46 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 6,
+              "DocumentIndex": 7,
+              "Title": "appsettings.Development.json",
+              "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker\\appsettings.Development.json",
+              "RelativeDocumentMoniker": "FinanceTracker\\appsettings.Development.json",
+              "ToolTip": "C:\\FinanceTracker\\FinanceTracker\\appsettings.Development.json",
+              "RelativeToolTip": "FinanceTracker\\appsettings.Development.json",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001642|",
+              "WhenOpened": "2025-12-27T23:06:18.959Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
               "Title": "SummaryController.cs",
               "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker\\Data\\Controllers\\SummaryController.cs",
               "RelativeDocumentMoniker": "FinanceTracker\\Data\\Controllers\\SummaryController.cs",
               "ToolTip": "C:\\FinanceTracker\\FinanceTracker\\Data\\Controllers\\SummaryController.cs",
               "RelativeToolTip": "FinanceTracker\\Data\\Controllers\\SummaryController.cs",
-              "ViewState": "AgIAAEEAAAAAAAAAAIBJwAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAADQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-27T22:07:59.74Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "Program.cs",
               "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker\\Program.cs",
               "RelativeDocumentMoniker": "FinanceTracker\\Program.cs",
               "ToolTip": "C:\\FinanceTracker\\FinanceTracker\\Program.cs",
               "RelativeToolTip": "FinanceTracker\\Program.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAAcAAAAAAAAAAAAtwA0AAAAlAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-12-27T22:00:17.9Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 2,
               "Title": "SummaryControllerTests.cs",
               "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker.Tests\\SummaryControllerTests.cs",
               "RelativeDocumentMoniker": "FinanceTracker.Tests\\SummaryControllerTests.cs",
@@ -85,7 +102,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 4,
               "Title": "CategoriesControllerTests.cs",
               "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker.Tests\\CategoriesControllerTests.cs",
               "RelativeDocumentMoniker": "FinanceTracker.Tests\\CategoriesControllerTests.cs",
@@ -98,7 +115,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 3,
               "Title": "CustomWebApplicationFactory.cs",
               "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker.Tests\\CustomWebApplicationFactory.cs",
               "RelativeDocumentMoniker": "FinanceTracker.Tests\\CustomWebApplicationFactory.cs",
@@ -111,7 +128,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 4,
+              "DocumentIndex": 5,
               "Title": "FinanceTracker.Tests.csproj",
               "DocumentMoniker": "C:\\FinanceTracker\\FinanceTracker.Tests\\FinanceTracker.Tests.csproj",
               "RelativeDocumentMoniker": "FinanceTracker.Tests\\FinanceTracker.Tests.csproj",
@@ -124,7 +141,7 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 6,
               "Title": "ci.yml",
               "DocumentMoniker": "C:\\FinanceTracker\\.github\\workflows\\ci.yml",
               "RelativeDocumentMoniker": ".github\\workflows\\ci.yml",
