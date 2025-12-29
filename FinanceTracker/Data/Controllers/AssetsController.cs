@@ -23,7 +23,7 @@ public class AssetsController : ControllerBase
     public async Task<IActionResult> Create(CreateAssetRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Name))
-            return BadRequest("Name is required.");
+            throw new ArgumentException("Name is required.");
 
         var asset = new Account
         {

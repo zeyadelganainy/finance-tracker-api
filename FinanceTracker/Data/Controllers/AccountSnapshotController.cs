@@ -19,10 +19,10 @@ public class AccountSnapshotController : ControllerBase
     public async Task<IActionResult> Upsert(Guid accountId, string date, UpsertSnapshotRequest req)
     {
         if (!DateOnly.TryParse(date, out var d))
-            return BadRequest("Invalid date. Use YYYY-MM-DD.");
+            throw new ArgumentException("Invalid date. Use YYYY-MM-DD.");
 
         var accountExists = await _db.Accounts.AnyAsync(a => a.Id == accountId);
-        if (!accountExists) return NotFound("Account not found.");
+        if (!accountExists) throw new KeyNotFoundException("Account not found.");
 
         var snapshot = await _db.AccountSnapshots
             .SingleOrDefaultAsync(s => s.AccountId == accountId && s.Date == d);

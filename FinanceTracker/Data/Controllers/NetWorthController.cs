@@ -15,7 +15,7 @@ public class NetWorthController : ControllerBase
     [HttpGet("/net-worth")]
     public async Task<IActionResult> Get([FromQuery] DateOnly from, [FromQuery] DateOnly to, [FromQuery] string interval = "month")
     {
-        if (to < from) return BadRequest("to must be >= from");
+        if (to < from) throw new ArgumentException("to must be >= from");
 
         // Load snapshots in range with account info
         var rows = await _db.AccountSnapshots

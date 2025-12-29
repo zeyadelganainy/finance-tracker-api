@@ -18,10 +18,10 @@ public class TransactionsController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<TransactionResponse>> Create(CreateTransactionRequest req)
     {
-        if (req.Amount == 0) return BadRequest("Amount cannot be 0.");
+        if (req.Amount == 0) throw new ArgumentException("Amount cannot be 0.");
 
         var categoryExists = await _db.Categories.AnyAsync(c => c.Id == req.CategoryId);
-        if (!categoryExists) return BadRequest("CategoryId is invalid.");
+        if (!categoryExists) throw new ArgumentException("CategoryId is invalid.");
 
         var tx = new Transaction
         {

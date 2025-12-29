@@ -65,8 +65,11 @@ public class ExceptionHandlingMiddleware
     {
         return exception switch
         {
-            ArgumentException or InvalidOperationException => 
+            ArgumentException => 
                 (HttpStatusCode.BadRequest, exception.Message),
+            
+            InvalidOperationException => 
+                (HttpStatusCode.Conflict, exception.Message),
             
             KeyNotFoundException => 
                 (HttpStatusCode.NotFound, exception.Message),

@@ -36,12 +36,12 @@ public class CategoriesController : ControllerBase
     {
         var name = (req.Name ?? "").Trim();
 
-        if (name.Length == 0) return BadRequest("Name is required.");
-        if (name.Length > 50) return BadRequest("Name must be 50 characters or less.");
+        if (name.Length == 0) throw new ArgumentException("Name is required.");
+        if (name.Length > 50) throw new ArgumentException("Name must be 50 characters or less.");
 
         // Prevent duplicates (simple version)
         var exists = await _db.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
-        if (exists) return Conflict("Category already exists.");
+        if (exists) throw new InvalidOperationException("Category already exists.");
 
         var category = new Category { Name = name };
         _db.Categories.Add(category);

@@ -17,10 +17,10 @@ public class SummaryController : ControllerBase
     public async Task<IActionResult> Monthly([FromQuery] string? month)
     {
         if (string.IsNullOrWhiteSpace(month))
-            return BadRequest("month is required in format YYYY-MM");
+            throw new ArgumentException("month is required in format YYYY-MM");
 
         if (!DateOnly.TryParse($"{month}-01", out var start))
-            return BadRequest("Invalid month. Use YYYY-MM.");
+            throw new ArgumentException("Invalid month. Use YYYY-MM.");
 
         var end = start.AddMonths(1);
 

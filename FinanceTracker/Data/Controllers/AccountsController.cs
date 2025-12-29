@@ -17,7 +17,7 @@ public class AccountsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateAccountRequest req)
     {
-        if (string.IsNullOrWhiteSpace(req.Name)) return BadRequest("Name is required.");
+        if (string.IsNullOrWhiteSpace(req.Name)) throw new ArgumentException("Name is required.");
 
         var account = new Account
         {
