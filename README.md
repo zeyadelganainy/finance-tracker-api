@@ -576,7 +576,6 @@ GitHub Actions workflow runs on every push and pull request:
 - **Test Coverage:** 96 integration tests (100% pass rate)
 - **Test Strategy:** Controller-level integration tests with in-memory database
 - **Code Quality:** Automated formatting checks in CI
-- **Documentation:** API documentation and deployment guides
 
 ### Database Quality
 
@@ -646,8 +645,6 @@ spec:
               name: db-secret
               key: connection-string
 ```
-
-See [DEPLOYMENT_GUIDE.md](DEPLOYMENT_GUIDE.md) for complete deployment instructions.
 
 ---
 
