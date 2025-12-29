@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using FinanceTracker.Api.Models;
+using FinanceTracker.Contracts.Common;
 using FinanceTracker.Data;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -219,8 +220,10 @@ public class NetWorthControllerTests : IClassFixture<CustomWebApplicationFactory
 
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("to must be >= from", error);
+        var error = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+        Assert.NotNull(error);
+        Assert.Contains("to must be >= from", error.Error);
+        Assert.NotNull(error.TraceId);
     }
 
     [Fact]
