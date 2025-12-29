@@ -87,7 +87,7 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Name is required", error);
+        Assert.Contains("Name field is required", error);
     }
 
     [Fact]
@@ -102,7 +102,8 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("50 characters or less", error);
+        Assert.Contains("Name", error);
+        Assert.Contains("50", error);
     }
 
     [Fact]

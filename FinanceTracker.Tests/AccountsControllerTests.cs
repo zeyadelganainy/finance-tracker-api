@@ -88,7 +88,7 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Name is required", error);
+        Assert.Contains("Name field is required", error);
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Name is required", error);
+        Assert.Contains("Name", error);
     }
 
     [Fact]

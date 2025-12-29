@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using FinanceTracker.Contracts.Common;
+using FinanceTracker.Data;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace FinanceTracker.Tests;
@@ -8,16 +10,19 @@ namespace FinanceTracker.Tests;
 public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
 {
     private readonly HttpClient _client;
+    private readonly CustomWebApplicationFactory _factory;
 
     public ValidationTests(CustomWebApplicationFactory factory)
     {
+        _factory = factory;
         _client = factory.CreateClient();
     }
 
     [Fact]
     public async Task CreateAccount_WithMissingName_ReturnsValidationError()
     {
-        // Arrange - Name is null (violates Required attribute)
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Name = (string?)null,
@@ -39,7 +44,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task CreateAccount_WithTooLongName_ReturnsValidationError()
     {
-        // Arrange - Name exceeds MaxLength(100)
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Name = new string('a', 101),
@@ -62,6 +68,7 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     public async Task CreateCategory_WithMissingName_ReturnsValidationError()
     {
         // Arrange
+        await ClearDatabase();
         var request = new
         {
             Name = (string?)null
@@ -81,7 +88,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task CreateCategory_WithTooLongName_ReturnsValidationError()
     {
-        // Arrange - Exceeds MaxLength(50)
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Name = new string('a', 51)
@@ -101,7 +109,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task CreateTransaction_WithInvalidAmount_ReturnsValidationError()
     {
-        // Arrange - Amount exceeds Range
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Amount = 2000000000m, // Exceeds max
@@ -124,7 +133,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task CreateTransaction_WithTooLongDescription_ReturnsValidationError()
     {
-        // Arrange - Description exceeds MaxLength(200)
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Amount = 100m,
@@ -147,7 +157,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task UpsertSnapshot_WithOutOfRangeBalance_ReturnsValidationError()
     {
-        // Arrange - Balance exceeds Range
+        // Arrange
+        await ClearDatabase();
         var accountId = Guid.NewGuid();
         var request = new
         {
@@ -168,7 +179,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task CreateAsset_WithTooLongTicker_ReturnsValidationError()
     {
-        // Arrange - Ticker exceeds MaxLength(20)
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Name = "Test Asset",
@@ -190,7 +202,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task CreateAsset_WithTooLongAssetClass_ReturnsValidationError()
     {
-        // Arrange - AssetClass exceeds MaxLength(50)
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Name = "Test Asset",
@@ -212,7 +225,8 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
     [Fact]
     public async Task ValidationError_IncludesTraceId()
     {
-        // Arrange - Any validation error
+        // Arrange
+        await ClearDatabase();
         var request = new
         {
             Name = (string?)null
@@ -227,5 +241,16 @@ public class ValidationTests : IClassFixture<CustomWebApplicationFactory>
         Assert.NotNull(error);
         Assert.NotNull(error.TraceId);
         Assert.NotEmpty(error.TraceId);
+    }
+
+    private async Task ClearDatabase()
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        db.AccountSnapshots.RemoveRange(db.AccountSnapshots);
+        db.Accounts.RemoveRange(db.Accounts);
+        db.Transactions.RemoveRange(db.Transactions);
+        db.Categories.RemoveRange(db.Categories);
+        await db.SaveChangesAsync();
     }
 }

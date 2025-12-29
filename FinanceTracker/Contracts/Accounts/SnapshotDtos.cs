@@ -3,7 +3,7 @@ using System.ComponentModel.DataAnnotations;
 namespace FinanceTracker.Contracts.Accounts;
 
 public record UpsertSnapshotRequest(
-    [property: Range(typeof(decimal), "-1000000000", "1000000000")]
+    [Range(typeof(decimal), "-1000000000", "1000000000")]
     decimal Balance
 );
 

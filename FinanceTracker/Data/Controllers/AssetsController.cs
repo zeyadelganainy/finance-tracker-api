@@ -13,12 +13,6 @@ public class AssetsController : ControllerBase
     private readonly AppDbContext _db;
     public AssetsController(AppDbContext db) => _db = db;
 
-    public record CreateAssetRequest(
-        string Name,
-        string? AssetClass,
-        string? Ticker
-    );
-
     [HttpPost]
     public async Task<IActionResult> Create(CreateAssetRequest req)
     {

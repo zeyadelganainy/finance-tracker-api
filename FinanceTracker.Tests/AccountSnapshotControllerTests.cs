@@ -190,7 +190,7 @@ public class AccountSnapshotControllerTests : IClassFixture<CustomWebApplication
         // Arrange
         await ClearDatabase();
         var accountId = await SeedAccount("Large Account", null, false);
-        var request = new { Balance = 999999999999m };
+        var request = new { Balance = 999999999m }; // Within valid range
 
         // Act
         var response = await _client.PutAsJsonAsync($"/accounts/{accountId}/snapshots/2025-01-01", request);
@@ -199,7 +199,7 @@ public class AccountSnapshotControllerTests : IClassFixture<CustomWebApplication
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var snapshot = await response.Content.ReadFromJsonAsync<SnapshotDto>();
         Assert.NotNull(snapshot);
-        Assert.Equal(999999999999m, snapshot.Balance);
+        Assert.Equal(999999999m, snapshot.Balance);
     }
 
     private async Task ClearDatabase()

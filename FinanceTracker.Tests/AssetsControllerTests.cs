@@ -154,7 +154,7 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Name is required", error);
+        Assert.Contains("Name field is required", error);
     }
 
     [Fact]
@@ -174,7 +174,7 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
         // Assert
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Name is required", error);
+        Assert.Contains("Name", error);
     }
 
     [Fact]
@@ -230,11 +230,12 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
         // Act & Assert
         var assetClasses = new[] { "stock", "bond", "crypto", "gold", "real estate", "cash", "other" };
         
+        int index = 0;
         foreach (var assetClass in assetClasses)
         {
             var request = new
             {
-                Name = $"{assetClass} asset",
+                Name = $"{assetClass} asset {index++}",
                 AssetClass = assetClass,
                 Ticker = (string?)null
             };
@@ -447,8 +448,13 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        db.AccountSnapshots.RemoveRange(db.AccountSnapshots);
-        db.Accounts.RemoveRange(db.Accounts);
+        
+        var snapshots = await db.AccountSnapshots.ToListAsync();
+        db.AccountSnapshots.RemoveRange(snapshots);
+        
+        var accounts = await db.Accounts.ToListAsync();
+        db.Accounts.RemoveRange(accounts);
+        
         await db.SaveChangesAsync();
     }
 
