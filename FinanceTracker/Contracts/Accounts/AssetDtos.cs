@@ -1,9 +1,11 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace FinanceTracker.Contracts.Accounts;
 
 public record CreateAssetRequest(
-    string Name,
-    string? AssetClass,
-    string? Ticker
+    [property: Required, MaxLength(100)] string Name,
+    [property: MaxLength(50)] string? AssetClass,
+    [property: MaxLength(20)] string? Ticker
 );
 
 public record AssetResponse(

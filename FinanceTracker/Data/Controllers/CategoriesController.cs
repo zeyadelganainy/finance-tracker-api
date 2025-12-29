@@ -34,12 +34,14 @@ public class CategoriesController : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CategoryResponse>> Create([FromBody] CreateCategoryRequest req)
     {
-        var name = (req.Name ?? "").Trim();
+        // DataAnnotations handle Required and MaxLength validation
+        // Keep business logic validation
+        var name = req.Name.Trim();
 
-        if (name.Length == 0) throw new ArgumentException("Name is required.");
-        if (name.Length > 50) throw new ArgumentException("Name must be 50 characters or less.");
+        if (string.IsNullOrWhiteSpace(name)) 
+            throw new ArgumentException("Name cannot be only whitespace.");
 
-        // Prevent duplicates (simple version)
+        // Prevent duplicates (business logic)
         var exists = await _db.Categories.AnyAsync(c => c.Name.ToLower() == name.ToLower());
         if (exists) throw new InvalidOperationException("Category already exists.");
 

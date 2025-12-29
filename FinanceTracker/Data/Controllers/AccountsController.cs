@@ -17,7 +17,10 @@ public class AccountsController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(CreateAccountRequest req)
     {
-        if (string.IsNullOrWhiteSpace(req.Name)) throw new ArgumentException("Name is required.");
+        // DataAnnotations handle Required and MaxLength validation
+        // Keep whitespace check as business logic
+        if (string.IsNullOrWhiteSpace(req.Name))
+            throw new ArgumentException("Name cannot be only whitespace.");
 
         var account = new Account
         {

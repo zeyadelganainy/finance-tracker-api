@@ -1,8 +1,10 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace FinanceTracker.Contracts.Accounts;
 
 public record CreateAccountRequest(
-    string Name,
-    string? Type,
+    [property: Required, MaxLength(100)] string Name,
+    [property: MaxLength(30)] string? Type,
     bool IsLiability
 );
 
