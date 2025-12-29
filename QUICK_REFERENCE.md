@@ -1,14 +1,14 @@
 # Finance Tracker API - Quick Reference
 
-## ?? Health Endpoints
+## Health Endpoints
 
 | Endpoint | Purpose | Response | Use Case |
 |----------|---------|----------|----------|
-| `GET /health` | Liveness | `{"status":"ok"}` 200 OK | Is service alive? |
-| `GET /health/ready` | Readiness | `{"status":"ready"}` 200 OK | Is DB reachable? |
+| `GET /health` | Liveness | `{"status":"ok"}` 200 OK | Service alive |
+| `GET /health/ready` | Readiness | `{"status":"ready"}` 200 OK | DB reachable |
 | `GET /health/ready` | Readiness (down) | `{"status":"not_ready"}` 503 | DB unavailable |
 
-## ?? Request Logging Format
+## Request Logging Format
 
 ```
 HTTP {Method} {Path} => {StatusCode} in {Elapsed}ms TraceId={TraceId}
@@ -19,21 +19,20 @@ HTTP {Method} {Path} => {StatusCode} in {Elapsed}ms TraceId={TraceId}
 HTTP GET /transactions => 200 in 45ms TraceId=0HNI6M9P660RI
 ```
 
-## ?? Key Features
+## Key Features
 
-? **Liveness Probe**: `/health` - No dependencies, always available
-? **Readiness Probe**: `/health/ready` - Checks database connectivity  
-? **Request Logging**: Every request logged with timing and traceId
-? **Environment Safe**: OpenAPI/Scalar only in Development
-? **Zero Breaking Changes**: All existing functionality preserved
+- **Liveness Probe**: `/health` - No dependencies, always available
+- **Readiness Probe**: `/health/ready` - Checks database connectivity  
+- **Request Logging**: Every request logged with timing and traceId
+- **Environment Safe**: OpenAPI/Scalar only in Development
 
-## ?? Test Results
+## Test Results
 
 **Total Tests: 96 (all passing)**
-- Original tests: 92 ?
-- New health tests: 4 ?
+- Original tests: 92
+- Health endpoint tests: 4
 
-## ?? Environment Variables
+## Environment Variables
 
 ```bash
 # Required
@@ -44,14 +43,14 @@ ConnectionStrings__Default="Host=...;Database=...;Username=...;Password=..."
 Logging__LogLevel__Default=Information
 ```
 
-## ?? Docker Health Check
+## Docker Health Check
 
 ```dockerfile
 HEALTHCHECK --interval=10s --timeout=2s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 ```
 
-## ?? Kubernetes Probes
+## Kubernetes Probes
 
 ```yaml
 livenessProbe:
@@ -69,25 +68,24 @@ readinessProbe:
   periodSeconds: 5
 ```
 
-## ?? Debug with TraceId
+## Debug with TraceId
 
-When reporting issues:
+When debugging:
 1. Find TraceId in logs: `TraceId=0HNI6M9P660RI`
 2. Search all logs for that TraceId
-3. See complete request flow + any exceptions
+3. See complete request flow and exceptions
 
-## ?? Files Added/Modified
+## Files Modified
 
-**New Files:**
+**New:**
 - `FinanceTracker\Middleware\RequestLoggingMiddleware.cs`
 - `FinanceTracker.Tests\HealthControllerTests.cs`
-- `DEPLOYMENT_GUIDE.md`
 
-**Modified Files:**
+**Updated:**
 - `FinanceTracker\Data\Controllers\HealthController.cs` (added `/health/ready`)
 - `FinanceTracker\Program.cs` (middleware registration)
 
-## ?? Ready to Deploy!
+## Quick Start
 
 ```bash
 # Build
@@ -106,4 +104,4 @@ curl http://localhost:8080/health/ready
 
 ---
 
-**See DEPLOYMENT_GUIDE.md for full production deployment instructions.**
+See DEPLOYMENT_GUIDE.md for production deployment instructions.

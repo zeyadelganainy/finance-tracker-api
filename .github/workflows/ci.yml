@@ -11,19 +11,31 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: Setup .NET SDK
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "9.0.x"
 
-      - name: Restore
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build
-        run: dotnet build --no-restore -c Release
+      - name: Build solution
+        run: dotnet build -c Release --no-restore
 
-      - name: Test
-        run: dotnet test
+      - name: Run tests
+        run: dotnet test -c Release --no-build --verbosity normal
+
+      - name: Check code formatting (non-blocking)
+        run: dotnet format --verify-no-changes --verbosity diagnostic
+        continue-on-error: true

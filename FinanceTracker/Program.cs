@@ -7,6 +7,20 @@ using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure CORS policy for frontend
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+    ?? Array.Empty<string>();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("Frontend", policy =>
+    {
+        policy.WithOrigins(allowedOrigins)
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // Configure model validation error responses
 builder.Services.AddControllers()
     .ConfigureApiBehaviorOptions(options =>
@@ -48,6 +62,9 @@ else if (builder.Environment.EnvironmentName != "Test")
 }
 
 var app = builder.Build();
+
+// Apply CORS policy globally
+app.UseCors("Frontend");
 
 // Request logging middleware (logs all requests)
 app.UseMiddleware<RequestLoggingMiddleware>();
