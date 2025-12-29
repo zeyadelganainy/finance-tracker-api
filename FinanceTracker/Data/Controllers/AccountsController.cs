@@ -1,4 +1,5 @@
 ﻿using FinanceTracker.Api.Models;
+using FinanceTracker.Contracts.Accounts;
 using FinanceTracker.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,8 +13,6 @@ public class AccountsController : ControllerBase
     private readonly AppDbContext _db;
 
     public AccountsController(AppDbContext db) => _db = db;
-
-    public record CreateAccountRequest(string Name, string? Type, bool IsLiability);
 
     [HttpPost]
     public async Task<IActionResult> Create(CreateAccountRequest req)
@@ -30,7 +29,14 @@ public class AccountsController : ControllerBase
         _db.Accounts.Add(account);
         await _db.SaveChangesAsync();
 
-        return Created($"/accounts/{account.Id}", account);
+        var response = new AccountResponse(
+            account.Id,
+            account.Name,
+            account.Type,
+            account.IsLiability
+        );
+
+        return Created($"/accounts/{account.Id}", response);
     }
 
     [HttpGet]
@@ -39,13 +45,12 @@ public class AccountsController : ControllerBase
         var accounts = await _db.Accounts
             .AsNoTracking()
             .OrderBy(a => a.Name)
-            .Select(a => new
-            {
+            .Select(a => new AccountResponse(
                 a.Id,
                 a.Name,
                 a.Type,
                 a.IsLiability
-            })
+            ))
             .ToListAsync();
 
         return Ok(accounts);

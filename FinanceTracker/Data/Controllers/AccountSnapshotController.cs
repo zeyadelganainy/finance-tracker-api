@@ -1,4 +1,5 @@
 ﻿using FinanceTracker.Api.Models;
+using FinanceTracker.Contracts.Accounts;
 using FinanceTracker.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,8 +13,6 @@ public class AccountSnapshotController : ControllerBase
     private readonly AppDbContext _db;
 
     public AccountSnapshotController(AppDbContext db) => _db = db;
-
-    public record UpsertSnapshotRequest(decimal Balance);
 
     // PUT /accounts/{accountId}/snapshots/{date}
     [HttpPut("{date}")]
@@ -44,6 +43,14 @@ public class AccountSnapshotController : ControllerBase
         }
 
         await _db.SaveChangesAsync();
-        return Ok(new { snapshot.Id, snapshot.AccountId, date = snapshot.Date.ToString("yyyy-MM-dd"), snapshot.Balance });
+        
+        var response = new SnapshotResponse(
+            snapshot.Id,
+            snapshot.AccountId,
+            snapshot.Date.ToString("yyyy-MM-dd"),
+            snapshot.Balance
+        );
+        
+        return Ok(response);
     }
 }

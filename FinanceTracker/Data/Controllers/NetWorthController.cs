@@ -1,4 +1,5 @@
-﻿using FinanceTracker.Data;
+﻿using FinanceTracker.Contracts.NetWorth;
+using FinanceTracker.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,7 +8,7 @@ namespace FinanceTracker.Api.Controllers;
 [ApiController]
 public class NetWorthController : ControllerBase
 {
-    private readonly AppDbContext _db; // rename to your actual DbContext type
+    private readonly AppDbContext _db;
 
     public NetWorthController(AppDbContext db) => _db = db;
 
@@ -54,13 +55,11 @@ public class NetWorthController : ControllerBase
 
         var points = latestPerAccountBucket
             .GroupBy(x => BucketStart(x.Date))
-            .Select(g => new
-            {
-                date = g.Key,
-                netWorth = g.Sum(x => x.IsLiability ? -x.Balance : x.Balance)
-            })
-            .OrderBy(x => x.date)
-            .Select(x => new { date = x.date.ToString("yyyy-MM-dd"), netWorth = x.netWorth })
+            .Select(g => new NetWorthPoint(
+                g.Key.ToString("yyyy-MM-dd"),
+                g.Sum(x => x.IsLiability ? -x.Balance : x.Balance)
+            ))
+            .OrderBy(x => x.Date)
             .ToList();
 
         return Ok(points);

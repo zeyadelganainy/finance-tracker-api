@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Summary;
 using FinanceTracker.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -46,22 +47,22 @@ public class SummaryController : ControllerBase
             .ToDictionaryAsync(c => c.Id, c => c.Name);
 
         var breakdown = byCategory
-            .Select(x => new
-            {
-                CategoryId = x.CategoryId,
-                CategoryName = names.TryGetValue(x.CategoryId, out var n) ? n : "Unknown",
-                Total = x.Total
-            })
+            .Select(x => new ExpenseBreakdownDto(
+                x.CategoryId,
+                names.TryGetValue(x.CategoryId, out var n) ? n : "Unknown",
+                x.Total
+            ))
             .OrderBy(x => x.Total) // most negative first
             .ToList();
 
-        return Ok(new
-        {
-            Month = month,
-            TotalIncome = totalIncome,
-            TotalExpenses = totalExpenses, // negative
-            Net = totalIncome + totalExpenses,
-            ExpenseBreakdown = breakdown
-        });
+        var response = new MonthlySummaryResponse(
+            month,
+            totalIncome,
+            totalExpenses,
+            totalIncome + totalExpenses,
+            breakdown
+        );
+
+        return Ok(response);
     }
 }

@@ -1,4 +1,5 @@
 ﻿using FinanceTracker.Api.Models;
+using FinanceTracker.Contracts.Accounts;
 using FinanceTracker.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -36,13 +37,14 @@ public class AssetsController : ControllerBase
         _db.Accounts.Add(asset);
         await _db.SaveChangesAsync();
 
-        return Created($"/assets/{asset.Id}", new
-        {
+        var response = new AssetResponse(
             asset.Id,
             asset.Name,
             asset.AssetClass,
             asset.Ticker
-        });
+        );
+
+        return Created($"/assets/{asset.Id}", response);
     }
 
     [HttpGet]
@@ -52,13 +54,12 @@ public class AssetsController : ControllerBase
             .AsNoTracking()
             .Where(a => a.Type == "asset" && !a.IsLiability)
             .OrderBy(a => a.Name)
-            .Select(a => new
-            {
+            .Select(a => new AssetResponse(
                 a.Id,
                 a.Name,
                 a.AssetClass,
                 a.Ticker
-            })
+            ))
             .ToListAsync();
 
         return Ok(assets);

@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Categories;
 using FinanceTracker.Data;
 using FinanceTracker.Models;
 using Microsoft.AspNetCore.Mvc;
@@ -18,20 +19,20 @@ public class CategoriesController : ControllerBase
 
     // GET /categories
     [HttpGet]
-    public async Task<ActionResult<List<Category>>> GetAll()
+    public async Task<ActionResult<List<CategoryResponse>>> GetAll()
     {
         var categories = await _db.Categories
+            .AsNoTracking()
             .OrderBy(c => c.Name)
+            .Select(c => new CategoryResponse(c.Id, c.Name))
             .ToListAsync();
 
         return Ok(categories);
     }
 
-    public record CreateCategoryRequest(string Name);
-
     // POST /categories
     [HttpPost]
-    public async Task<ActionResult<Category>> Create([FromBody] CreateCategoryRequest req)
+    public async Task<ActionResult<CategoryResponse>> Create([FromBody] CreateCategoryRequest req)
     {
         var name = (req.Name ?? "").Trim();
 
@@ -46,6 +47,8 @@ public class CategoriesController : ControllerBase
         _db.Categories.Add(category);
         await _db.SaveChangesAsync();
 
-        return Created($"/categories/{category.Id}", category);
+        var response = new CategoryResponse(category.Id, category.Name);
+
+        return Created($"/categories/{category.Id}", response);
     }
 }

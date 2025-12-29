@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using FinanceTracker.Contracts.Categories;
 using FinanceTracker.Controllers;
 using FinanceTracker.Data;
 using FinanceTracker.Models;
@@ -30,7 +31,7 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var categories = await response.Content.ReadFromJsonAsync<List<Category>>();
+        var categories = await response.Content.ReadFromJsonAsync<List<CategoryResponse>>();
         Assert.NotNull(categories);
         Assert.Empty(categories);
     }
@@ -47,7 +48,7 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var categories = await response.Content.ReadFromJsonAsync<List<Category>>();
+        var categories = await response.Content.ReadFromJsonAsync<List<CategoryResponse>>();
         Assert.NotNull(categories);
         Assert.Equal(3, categories.Count);
         Assert.Equal("Food", categories[0].Name);
@@ -60,14 +61,14 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
     {
         // Arrange
         await ClearDatabase();
-        var request = new CategoriesController.CreateCategoryRequest("Groceries");
+        var request = new CreateCategoryRequest("Groceries");
 
         // Act
         var response = await _client.PostAsJsonAsync("/categories", request);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var category = await response.Content.ReadFromJsonAsync<Category>();
+        var category = await response.Content.ReadFromJsonAsync<CategoryResponse>();
         Assert.NotNull(category);
         Assert.Equal("Groceries", category.Name);
         Assert.True(category.Id > 0);
@@ -78,7 +79,7 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
     public async Task CreateCategory_WithEmptyName_ReturnsBadRequest()
     {
         // Arrange
-        var request = new CategoriesController.CreateCategoryRequest("");
+        var request = new CreateCategoryRequest("");
 
         // Act
         var response = await _client.PostAsJsonAsync("/categories", request);
@@ -93,7 +94,7 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
     public async Task CreateCategory_WithTooLongName_ReturnsBadRequest()
     {
         // Arrange
-        var request = new CategoriesController.CreateCategoryRequest(new string('a', 51));
+        var request = new CreateCategoryRequest(new string('a', 51));
 
         // Act
         var response = await _client.PostAsJsonAsync("/categories", request);
@@ -110,7 +111,7 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
         // Arrange
         await ClearDatabase();
         await SeedCategories("Food");
-        var request = new CategoriesController.CreateCategoryRequest("FOOD");
+        var request = new CreateCategoryRequest("FOOD");
 
         // Act
         var response = await _client.PostAsJsonAsync("/categories", request);
@@ -126,14 +127,14 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
     {
         // Arrange
         await ClearDatabase();
-        var request = new CategoriesController.CreateCategoryRequest("  Entertainment  ");
+        var request = new CreateCategoryRequest("  Entertainment  ");
 
         // Act
         var response = await _client.PostAsJsonAsync("/categories", request);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var category = await response.Content.ReadFromJsonAsync<Category>();
+        var category = await response.Content.ReadFromJsonAsync<CategoryResponse>();
         Assert.NotNull(category);
         Assert.Equal("Entertainment", category.Name);
     }

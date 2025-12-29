@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using FinanceTracker.Contracts.Summary;
 using FinanceTracker.Data;
 using FinanceTracker.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -65,7 +66,7 @@ public class SummaryControllerTests : IClassFixture<CustomWebApplicationFactory>
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var summary = await response.Content.ReadFromJsonAsync<MonthlySummaryDto>();
+        var summary = await response.Content.ReadFromJsonAsync<MonthlySummaryResponse>();
         Assert.NotNull(summary);
         Assert.Equal("2025-12", summary.Month);
         Assert.Equal(3000m, summary.TotalIncome);
@@ -91,7 +92,7 @@ public class SummaryControllerTests : IClassFixture<CustomWebApplicationFactory>
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var summary = await response.Content.ReadFromJsonAsync<MonthlySummaryDto>();
+        var summary = await response.Content.ReadFromJsonAsync<MonthlySummaryResponse>();
         Assert.NotNull(summary);
         Assert.Equal(0m, summary.TotalIncome);
         Assert.Equal(0m, summary.TotalExpenses);
@@ -117,7 +118,7 @@ public class SummaryControllerTests : IClassFixture<CustomWebApplicationFactory>
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var summary = await response.Content.ReadFromJsonAsync<MonthlySummaryDto>();
+        var summary = await response.Content.ReadFromJsonAsync<MonthlySummaryResponse>();
         Assert.NotNull(summary);
         Assert.Equal(3, summary.ExpenseBreakdown.Count);
         Assert.Equal("Utilities", summary.ExpenseBreakdown[0].CategoryName);
@@ -157,14 +158,4 @@ public class SummaryControllerTests : IClassFixture<CustomWebApplicationFactory>
         });
         await db.SaveChangesAsync();
     }
-
-    private record MonthlySummaryDto(
-        string Month,
-        decimal TotalIncome,
-        decimal TotalExpenses,
-        decimal Net,
-        List<ExpenseBreakdownDto> ExpenseBreakdown
-    );
-    
-    private record ExpenseBreakdownDto(int CategoryId, string CategoryName, decimal Total);
 }
