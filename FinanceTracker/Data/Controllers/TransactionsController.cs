@@ -1,3 +1,4 @@
+using FinanceTracker.Contracts.Common;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Data;
 using FinanceTracker.Models;
@@ -54,18 +55,33 @@ public class TransactionsController : ControllerBase
         return Created($"/transactions/{tx.Id}", response);
     }
 
-    // GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD
+    // GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=50&sort=-date
     [HttpGet]
-    public async Task<ActionResult<List<TransactionResponse>>> Get([FromQuery] DateOnly? from, [FromQuery] DateOnly? to)
+    public async Task<ActionResult<PagedResponse<TransactionResponse>>> Get(
+        [FromQuery] DateOnly? from,
+        [FromQuery] DateOnly? to,
+        [FromQuery] PagingQuery paging)
     {
+        // Cap page size to 200
+        var pageSize = Math.Min(paging.PageSize, 200);
+        var page = Math.Max(paging.Page, 1);
+
         var q = _db.Transactions.AsNoTracking().AsQueryable();
 
+        // Apply date filters
         if (from is not null) q = q.Where(t => t.Date >= from.Value);
         if (to is not null) q = q.Where(t => t.Date <= to.Value);
 
+        // Get total count before pagination
+        var total = await q.CountAsync();
+
+        // Apply sorting
+        q = ApplySorting(q, paging.Sort);
+
+        // Apply pagination
         var rows = await q
-            .OrderByDescending(t => t.Date)
-            .ThenByDescending(t => t.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .Select(t => new TransactionResponse(
                 t.Id,
                 t.Amount,
@@ -75,6 +91,25 @@ public class TransactionsController : ControllerBase
             ))
             .ToListAsync();
 
-        return Ok(rows);
+        var response = new PagedResponse<TransactionResponse>(
+            rows,
+            page,
+            pageSize,
+            total
+        );
+
+        return Ok(response);
+    }
+
+    private static IQueryable<Transaction> ApplySorting(IQueryable<Transaction> query, string sort)
+    {
+        return sort?.ToLowerInvariant() switch
+        {
+            "date" => query.OrderBy(t => t.Date).ThenBy(t => t.Id),
+            "-date" => query.OrderByDescending(t => t.Date).ThenByDescending(t => t.Id),
+            "amount" => query.OrderBy(t => t.Amount).ThenBy(t => t.Id),
+            "-amount" => query.OrderByDescending(t => t.Amount).ThenByDescending(t => t.Id),
+            _ => query.OrderByDescending(t => t.Date).ThenByDescending(t => t.Id) // Default: -date
+        };
     }
 }
