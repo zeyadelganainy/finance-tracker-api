@@ -49,15 +49,24 @@ else if (builder.Environment.EnvironmentName != "Test")
 
 var app = builder.Build();
 
+// Request logging middleware (logs all requests)
+app.UseMiddleware<RequestLoggingMiddleware>();
+
 // Global exception handling middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+// Map controllers
 app.MapControllers();
-// Serves OpenAPI JSON at /openapi/v1.json
-app.MapOpenApi();
 
-// Interactive docs UI at /scalar
-app.MapScalarApiReference();
+// Enable OpenAPI and Scalar UI only in Development
+if (app.Environment.IsDevelopment())
+{
+    // Serves OpenAPI JSON at /openapi/v1.json
+    app.MapOpenApi();
+
+    // Interactive docs UI at /scalar
+    app.MapScalarApiReference();
+}
 
 app.Run();
 
