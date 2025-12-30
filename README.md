@@ -1,14 +1,34 @@
-# Finance Tracker API
+# Finance Tracker
 
 ![CI Status](https://github.com/zeyadelganainy/finance-tracker-api/workflows/CI/badge.svg)
 [![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://www.postgresql.org/)
 
-A REST API for tracking personal finances. Handles transactions, categories, assets, and net worth calculation over time. Built to demonstrate clean API design, testing discipline, and production infrastructure.
+A monorepo for personal finance tracking. Contains a REST API backend and web frontend.
 
 ---
 
-## Key Features
+## Repository Structure
+
+```
+finance-tracker/
+├── apps/
+│   ├── api/              # .NET 9 REST API
+│   │   ├── FinanceTracker/
+│   │   └── FinanceTracker.Tests/
+│   └── web/              # Frontend (coming soon)
+├── .github/
+│   └── workflows/        # CI/CD pipelines
+└── docs/                 # Documentation
+```
+
+---
+
+## API
+
+A REST API for tracking personal finances. Handles transactions, categories, assets, and net worth calculation over time. Built to demonstrate clean API design, testing discipline, and production infrastructure.
+
+### Key Features
 
 - **Transaction Management** - Create, list, and delete income/expense transactions with date filtering and pagination
 - **Category Organization** - Unique categories with duplicate prevention enforced at the database level
@@ -21,9 +41,7 @@ A REST API for tracking personal finances. Handles transactions, categories, ass
 - **CI/CD Integration** - Automated testing and build verification via GitHub Actions
 - **96 Integration Tests** - Endpoint coverage including validation and error scenarios
 
----
-
-## Tech Stack
+### Tech Stack
 
 - **.NET 9** - Web API framework
 - **ASP.NET Core** - HTTP pipeline and routing
@@ -33,9 +51,7 @@ A REST API for tracking personal finances. Handles transactions, categories, ass
 - **GitHub Actions** - CI pipeline with NuGet caching
 - **OpenAPI** - API specification (development environment only)
 
----
-
-## Architecture Overview
+### Architecture Overview
 
 API-first backend designed for frontend integration or direct consumption.
 
@@ -491,7 +507,7 @@ Logs are used for:
 - [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
 - [PostgreSQL 16+](https://www.postgresql.org/download/)
 
-### Setup
+### API Setup
 
 1. **Clone the repository**
    ```bash
@@ -499,7 +515,12 @@ Logs are used for:
    cd finance-tracker-api
    ```
 
-2. **Configure database connection**
+2. **Navigate to API directory**
+   ```bash
+   cd apps/api
+   ```
+
+3. **Configure database connection**
    
    Edit `FinanceTracker/appsettings.Development.json`:
    ```json
@@ -518,7 +539,7 @@ Logs are used for:
 
    Never commit real connection strings. Use environment variables in production.
 
-3. **Apply database migrations**
+4. **Apply database migrations**
    ```bash
    cd FinanceTracker
    dotnet ef database update
@@ -526,7 +547,7 @@ Logs are used for:
 
    This creates all tables, indexes, and constraints.
 
-4. **Run the API**
+5. **Run the API**
    ```bash
    dotnet run
    ```
@@ -535,7 +556,7 @@ Logs are used for:
    
    OpenAPI docs (development only) at `http://localhost:5000/scalar`
 
-5. **Verify health**
+6. **Verify health**
    ```bash
    curl http://localhost:5000/health
    curl http://localhost:5000/health/ready
@@ -544,6 +565,9 @@ Logs are used for:
 ### Running Tests
 
 ```bash
+# From apps/api directory
+cd apps/api
+
 # Run all tests
 dotnet test
 
@@ -591,8 +615,8 @@ GitHub Actions workflow runs on every push and pull request:
 ### Docker
 
 ```bash
-# Build image
-docker build -t finance-tracker-api .
+# Build image (from repository root)
+docker build -f apps/api/Dockerfile -t finance-tracker-api .
 
 # Run container
 docker run -d -p 8080:8080 \
@@ -680,20 +704,21 @@ Use managed secrets (Azure Key Vault, AWS Secrets Manager, Kubernetes Secrets) i
 ## Project Structure
 
 ```
-FinanceTracker/
-├── Controllers/           # API endpoints (Categories, Transactions, etc.)
-├── Models/               # Entity models (Category, Transaction, Account, etc.)
-├── Contracts/            # Request/response DTOs (no EF leakage)
-├── Data/                 # EF Core DbContext and configurations
-├── Middleware/           # Request logging and exception handling
-├── Migrations/           # EF Core database migrations
-└── Program.cs            # Application startup and configuration
-
-FinanceTracker.Tests/
-├── *ControllerTests.cs   # Integration tests for each controller
-├── ValidationTests.cs    # Input validation tests
-├── ExceptionHandlingTests.cs  # Error handling tests
-└── CustomWebApplicationFactory.cs  # Test infrastructure
+apps/
+├── api/
+│   ├── FinanceTracker/
+│   │   ├── Controllers/           # API endpoints
+│   │   ├── Models/               # Entity models
+│   │   ├── Contracts/            # Request/response DTOs
+│   │   ├── Data/                 # EF Core DbContext
+│   │   ├── Middleware/           # Request logging, exception handling
+│   │   ├── Migrations/           # Database migrations
+│   │   └── Program.cs            # Application startup
+│   └── FinanceTracker.Tests/
+│       ├── *ControllerTests.cs   # Integration tests
+│       ├── ValidationTests.cs    # Input validation tests
+│       └── ExceptionHandlingTests.cs  # Error handling tests
+└── web/                          # Frontend (coming soon)
 ```
 
 ---
@@ -720,7 +745,3 @@ MIT License
 
 - **GitHub:** [zeyadelganainy](https://github.com/zeyadelganainy)
 - **Repository:** [finance-tracker-api](https://github.com/zeyadelganainy/finance-tracker-api)
-
----
-
-Backend API with 96 passing tests, CI/CD pipeline, and production deployment support.
