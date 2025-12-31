@@ -7,6 +7,9 @@ public class Account
     public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required]
+    public Guid UserId { get; set; }
+
+    [Required]
     [MaxLength(100)]
     public string Name { get; set; } = string.Empty;
 

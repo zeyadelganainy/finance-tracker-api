@@ -6,6 +6,9 @@ public class AccountSnapshot
 {
     public Guid Id { get; set; } = Guid.NewGuid();
 
+    [Required]
+    public Guid UserId { get; set; }
+
     public Guid AccountId { get; set; }
     public Account Account { get; set; } = null!;
 

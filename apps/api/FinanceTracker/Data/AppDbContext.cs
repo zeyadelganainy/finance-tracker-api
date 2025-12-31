@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
             e.HasIndex(x => x.Date);
             e.HasIndex(x => x.CategoryId);
             e.HasIndex(x => new { x.Date, x.CategoryId });
+            e.HasIndex(x => x.UserId); // Index for user data isolation
             
             // Explicit delete behavior: restrict deletion if transactions exist
             e.HasOne(x => x.Category)
@@ -37,10 +38,12 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Restrict);
         });
 
-        // Category uniqueness constraint
+        // Category uniqueness constraint and indexes
         modelBuilder.Entity<Category>(e =>
         {
-            e.HasIndex(x => x.Name).IsUnique();
+            // Unique constraint per user - each user can have their own categories
+            e.HasIndex(x => new { x.UserId, x.Name }).IsUnique();
+            e.HasIndex(x => x.UserId); // Index for user data isolation
         });
 
         // AccountSnapshot constraints and indexes
@@ -48,6 +51,7 @@ public class AppDbContext : DbContext
         {
             e.HasIndex(x => new { x.AccountId, x.Date }).IsUnique();
             e.HasIndex(x => x.Date);
+            e.HasIndex(x => x.UserId); // Index for user data isolation
             e.Property(x => x.Balance).HasPrecision(18, 2);
             
             // Explicit delete behavior: cascade when account is deleted
@@ -57,20 +61,22 @@ public class AppDbContext : DbContext
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
-        // Account property constraints
+        // Account property constraints and indexes
         modelBuilder.Entity<Account>(e =>
         {
             e.Property(x => x.Institution).HasMaxLength(100);
             e.Property(x => x.Currency).HasMaxLength(10).HasDefaultValue("USD");
+            e.HasIndex(x => x.UserId); // Index for user data isolation
         });
 
-        // Asset property constraints
+        // Asset property constraints and indexes
         modelBuilder.Entity<Asset>(e =>
         {
             e.Property(x => x.Quantity).HasPrecision(18, 8);
             e.Property(x => x.CostBasisTotal).HasPrecision(18, 2);
             e.HasIndex(x => x.AssetClass);
             e.HasIndex(x => x.CreatedAt);
+            e.HasIndex(x => x.UserId); // Index for user data isolation
         });
     }
 }

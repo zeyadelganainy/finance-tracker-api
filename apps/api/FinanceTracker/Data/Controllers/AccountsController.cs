@@ -1,6 +1,8 @@
 ﻿using FinanceTracker.Api.Models;
+using FinanceTracker.Auth;
 using FinanceTracker.Contracts.Accounts;
 using FinanceTracker.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,11 +10,17 @@ namespace FinanceTracker.Api.Controllers;
 
 [ApiController]
 [Route("accounts")]
+[Authorize] // Require authentication for all account endpoints
 public class AccountsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICurrentUserContext _currentUser;
 
-    public AccountsController(AppDbContext db) => _db = db;
+    public AccountsController(AppDbContext db, ICurrentUserContext currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
 
     [HttpPost]
     public async Task<IActionResult> Create(CreateAccountRequest req)
@@ -22,8 +30,12 @@ public class AccountsController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new ArgumentException("Name cannot be only whitespace.");
 
+        // Parse UserId from JWT - this ensures we never accept user_id from client
+        var userId = Guid.Parse(_currentUser.UserId);
+
         var account = new Account
         {
+            UserId = userId, // Set from authenticated user context
             Name = req.Name.Trim(),
             Institution = string.IsNullOrWhiteSpace(req.Institution) ? null : req.Institution.Trim(),
             Type = string.IsNullOrWhiteSpace(req.Type) ? null : req.Type.Trim(),
@@ -51,8 +63,12 @@ public class AccountsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List()
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Only return accounts belonging to the current user
         var accounts = await _db.Accounts
             .AsNoTracking()
+            .Where(a => a.UserId == userId)
             .OrderBy(a => a.Name)
             .Select(a => new AccountResponse(
                 a.Id,
@@ -72,10 +88,14 @@ public class AccountsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Filter by both ID and UserId to prevent accessing other users' data
         var account = await _db.Accounts
             .AsNoTracking()
             .Include(a => a.Snapshots)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .Where(a => a.Id == id && a.UserId == userId)
+            .FirstOrDefaultAsync();
 
         if (account == null)
             return NotFound(new { error = "Account not found" });
@@ -107,7 +127,13 @@ public class AccountsController : ControllerBase
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new ArgumentException("Name cannot be only whitespace.");
 
-        var account = await _db.Accounts.FindAsync(id);
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Filter by both ID and UserId
+        var account = await _db.Accounts
+            .Where(a => a.Id == id && a.UserId == userId)
+            .FirstOrDefaultAsync();
+
         if (account == null)
             return NotFound(new { error = "Account not found" });
 
@@ -136,9 +162,13 @@ public class AccountsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Filter by both ID and UserId
         var account = await _db.Accounts
             .Include(a => a.Snapshots)
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .Where(a => a.Id == id && a.UserId == userId)
+            .FirstOrDefaultAsync();
 
         if (account == null)
             return NotFound(new { error = "Account not found" });

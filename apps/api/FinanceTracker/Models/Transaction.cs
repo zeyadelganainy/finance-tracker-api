@@ -7,6 +7,9 @@ public class Transaction
 {
     public int Id { get; set; }
 
+    [Required]
+    public Guid UserId { get; set; }
+
     // Positive = income, Negative = expense (simple rule)
     [Column(TypeName = "numeric(12,2)")]
     public decimal Amount { get; set; }
