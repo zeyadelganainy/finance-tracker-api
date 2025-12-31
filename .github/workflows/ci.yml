@@ -10,9 +10,6 @@ jobs:
   build-and-test:
     name: Build and Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/api
 
     steps:
       - name: Checkout code
@@ -32,15 +29,16 @@ jobs:
             ${{ runner.os }}-nuget-
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore FinanceTracker.sln
 
       - name: Build solution
-        run: dotnet build -c Release --no-restore
+        run: dotnet build FinanceTracker.sln -c Release --no-restore
 
       - name: Run tests
-        run: dotnet test -c Release --no-build --verbosity normal
+        run: dotnet test FinanceTracker.sln -c Release --no-build --verbosity normal
 
       - name: Check code formatting (non-blocking)
+        working-directory: apps/api
         run: dotnet format --verify-no-changes --verbosity diagnostic
         continue-on-error: true
 
@@ -118,4 +116,4 @@ jobs:
           echo "- **URL**: ${{ steps.get-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Health Check" >> $GITHUB_STEP_SUMMARY
-          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY
+          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY
