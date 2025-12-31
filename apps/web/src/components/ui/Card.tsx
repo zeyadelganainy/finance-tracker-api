@@ -32,6 +32,7 @@ interface StatCardProps {
   trend?: {
     value: number;
     positive: boolean;
+    label?: string;
   };
   icon?: ReactNode;
   valueColor?: string;
@@ -49,7 +50,13 @@ export function StatCard({ label, value, trend, icon, valueColor }: StatCardProp
       </div>
       {trend && (
         <div className={cn('text-sm mt-2 flex items-center gap-1', trend.positive ? 'text-green-600' : 'text-red-600')}>
-          {trend.positive ? '↑' : '↓'} {Math.abs(trend.value)}%
+          {trend.label === '—' ? (
+            <span className="text-gray-500">Not enough history yet</span>
+          ) : (
+            <>
+              {trend.positive ? '↑' : '↓'} {trend.label || `${Math.abs(trend.value)}%`}
+            </>
+          )}
         </div>
       )}
     </div>

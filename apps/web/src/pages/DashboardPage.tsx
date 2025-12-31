@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { format, subMonths } from 'date-fns';
+import { format, parse, subMonths } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
@@ -14,23 +14,49 @@ import { EmptyState } from '../components/ui/EmptyState';
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
+// Custom tooltip component for Expense Breakdown PieChart
+interface ExpenseTooltipProps {
+  active?: boolean;
+  payload?: any[];
+  expenseTotalExpense: number;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function ExpenseTooltip({ active, payload, expenseTotalExpense }: ExpenseTooltipProps) {
+  if (!active || !payload || payload.length === 0) {
+    return null;
+  }
+
+  const data = payload[0];
+  const categoryName = data.name;
+  const amount = Number(data.value);
+  const percent = ((amount / expenseTotalExpense) * 100).toFixed(1);
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 shadow-lg p-3">
+      <div className="text-sm font-semibold text-gray-900">{categoryName}</div>
+      <div className="text-sm font-semibold text-gray-900 mt-1">{formatCurrency(amount)}</div>
+      <div className="text-xs text-gray-600 mt-1">{percent}% of total</div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const { user, accessToken, isLoading: authLoading } = useAuth();
   const currentMonth = format(new Date(), 'yyyy-MM');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
-  const [showAIContext, setShowAIContext] = useState(false);
+  const [netWorthRange, setNetWorthRange] = useState<'1w' | '1m' | '3m' | '6m'>('1m');
   const [netWorthData, setNetWorthData] = useState<NetWorthHistoryResponse | null>(null);
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [lastFetchAt, setLastFetchAt] = useState<number | null>(null);
   
   // Generate last 6 months for net worth chart
   const sixMonthsAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
   const today = format(new Date(), 'yyyy-MM-dd');
   
   // Fetch AI context (used for generating insights later) only when authenticated
-  const { data: aiContext, isLoading: loadingAI } = useAIContext(!!user);
+  useAIContext(!!user);
 
   // Fetch dashboard data and reset on auth/user change
   useEffect(() => {
@@ -60,7 +86,6 @@ export function DashboardPage() {
 
         setNetWorthData(networth);
         setMonthlySummary(summary);
-        setLastFetchAt(Date.now());
         setError(null);
       } catch (err) {
         if (controller.signal.aborted) return;
@@ -69,7 +94,6 @@ export function DashboardPage() {
         if (message.startsWith('404')) {
           setNetWorthData({ from: sixMonthsAgo, to: today, interval: 'daily', dataPoints: [] });
           setMonthlySummary({ month: selectedMonth, totalIncome: 0, totalExpenses: 0, net: 0, expenseBreakdown: [] });
-          setLastFetchAt(Date.now());
           setError(null);
         } else {
           setError(message);
@@ -97,24 +121,95 @@ export function DashboardPage() {
   // Prepare chart data
   const netWorthPoints = netWorthData?.dataPoints ?? [];
 
-  const netWorthChartData = netWorthPoints.map((point: NetWorthDataPoint) => ({
+  // Map range to days
+  const rangeDays = { '1w': 7, '1m': 30, '3m': 90, '6m': 180 };
+  const selectedDays = rangeDays[netWorthRange];
+  const rangeStartDate = subMonths(new Date(), selectedDays / 30);
+
+  // Filter net worth points to selected range
+  const filteredNetWorthPoints = netWorthPoints.filter((point) => {
+    return new Date(point.date) >= rangeStartDate;
+  });
+
+  const netWorthChartData = filteredNetWorthPoints.map((point: NetWorthDataPoint) => ({
     date: format(new Date(point.date), 'MMM dd'),
     netWorth: point.netWorth,
   }));
   
-  const expenseChartData = (monthlySummary?.expenseBreakdown || [])
-    .filter(item => Math.abs(item.total) > 0)
-    .map(item => ({
-      name: item.categoryName,
-      value: Math.abs(item.total),
+  const { chartData: expenseChartData, totalExpense: expenseTotalExpense } = (() => {
+    const breakdown = monthlySummary?.expenseBreakdown || [];
+    if (breakdown.length === 0) return { chartData: [], totalExpense: 0 };
+
+    // Filter out zero values and compute absolute values
+    const validCategories = breakdown
+      .filter(item => Math.abs(item.total) > 0)
+      .map(item => ({
+        name: item.categoryName,
+        value: Math.abs(item.total),
+      }));
+
+    if (validCategories.length === 0) return { chartData: [], totalExpense: 0 };
+
+    const totalExpense = validCategories.reduce((sum, item) => sum + item.value, 0);
+    if (totalExpense === 0) return { chartData: [], totalExpense: 0 };
+
+    // Compute shares and sort by value descending
+    const categorized = validCategories.map(item => ({
+      name: item.name,
+      value: item.value,
+      share: item.value / totalExpense,
     }));
+
+    categorized.sort((a, b) => b.value - a.value);
+
+    // Keep only top 7 categories; rest go to "Other"
+    const maxCategories = 7;
+    const topCategories = categorized.slice(0, maxCategories);
+    const remainingCategories = categorized.slice(maxCategories);
+
+    // Combine remaining categories and those < 1% into "Other"
+    const smallCategories = topCategories.filter(cat => cat.share < 0.01);
+    const finalMajorCategories = topCategories.filter(cat => cat.share >= 0.01);
+
+    // Add "Other" if there are categories to merge
+    const otherCategories = [...smallCategories, ...remainingCategories];
+    if (otherCategories.length > 0) {
+      const otherValue = otherCategories.reduce((sum, cat) => sum + cat.value, 0);
+      finalMajorCategories.push({
+        name: 'Other',
+        value: otherValue,
+        share: otherValue / totalExpense,
+      });
+    }
+
+    const chartData = finalMajorCategories.map(({ name, value, share }) => ({ name, value, share }));
+    return { chartData, totalExpense };
+  })();
+
+  // Parse selected month correctly for display
+  const selectedMonthDate = parse(selectedMonth, 'yyyy-MM', new Date());
   
-  const latestNetWorth = netWorthPoints.length > 0 ? netWorthPoints[netWorthPoints.length - 1].netWorth : 0;
-  const previousNetWorth = netWorthPoints.length > 1 ? netWorthPoints[netWorthPoints.length - 2].netWorth : 0;
-  const netWorthChange = latestNetWorth - previousNetWorth;
-  const netWorthChangePercent = previousNetWorth !== 0 
-    ? ((netWorthChange / Math.abs(previousNetWorth)) * 100).toFixed(1)
-    : '0.0';
+  const latestNetWorth = filteredNetWorthPoints.length > 0 
+    ? filteredNetWorthPoints[filteredNetWorthPoints.length - 1].netWorth 
+    : 0;
+  const earliestNetWorth = filteredNetWorthPoints.length > 0 
+    ? filteredNetWorthPoints[0].netWorth 
+    : 0;
+  const netWorthChange = latestNetWorth - earliestNetWorth;
+  
+  const netWorthChangePercent = filteredNetWorthPoints.length > 1 && earliestNetWorth !== 0
+    ? ((netWorthChange / Math.abs(earliestNetWorth)) * 100).toFixed(1)
+    : null;
+
+  const rangeLabels = { '1w': 'Last 7 days', '1m': 'Last 30 days', '3m': 'Last 90 days', '6m': 'Last 6 months' };
+  const rangeComparisons = { '1w': 'vs previous 7 days', '1m': 'vs last 30 days', '3m': 'vs last 90 days', '6m': 'vs last 6 months' };
+  
+  // Determine if we have enough history for meaningful comparison
+  const hasEnoughHistoryForComparison = filteredNetWorthPoints.length > 1;
+  
+  const netWorthTrendLabel = hasEnoughHistoryForComparison
+    ? `${netWorthChangePercent}% ${rangeComparisons[netWorthRange]}`
+    : '—';
 
   const hasSummaryData = !!monthlySummary && (
     monthlySummary.totalIncome !== 0 ||
@@ -178,8 +273,9 @@ export function DashboardPage() {
                 label="Net Worth"
                 value={formatCurrency(latestNetWorth)}
                 trend={{
-                  value: parseFloat(netWorthChangePercent),
-                  positive: netWorthChange >= 0,
+                  value: hasEnoughHistoryForComparison && netWorthChangePercent ? parseFloat(netWorthChangePercent) : 0,
+                  positive: hasEnoughHistoryForComparison && netWorthChangePercent ? netWorthChange >= 0 : false,
+                  label: netWorthTrendLabel,
                 }}
                 icon={
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -233,56 +329,76 @@ export function DashboardPage() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Net Worth Over Time */}
-              <Card title="Net Worth Over Time" description="Last 6 months">
-                <div className="h-80">
-                  {netWorthChartData.length > 0 ? (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart data={netWorthChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                        <XAxis 
-                          dataKey="date" 
-                          stroke="#6b7280" 
-                          fontSize={12}
-                          tick={{ fill: '#6b7280' }}
-                        />
-                        <YAxis 
-                          stroke="#6b7280" 
-                          fontSize={12}
-                          tick={{ fill: '#6b7280' }}
-                          tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#fff',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                          }}
-                          formatter={(value: any) => [formatCurrency(Number(value)), 'Net Worth']}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="netWorth"
-                          stroke="#3b82f6"
-                          strokeWidth={3}
-                          dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                          activeDot={{ r: 6, strokeWidth: 2 }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                      <svg className="w-16 h-16 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                      <p className="text-sm">No net worth data available</p>
-                    </div>
-                  )}
+              <Card title="Net Worth Over Time" description={rangeLabels[netWorthRange]}>
+                <div className="space-y-4">
+                  {/* Range Selector */}
+                  <div className="flex gap-2">
+                    {(['1w', '1m', '3m', '6m'] as const).map((range) => (
+                      <button
+                        key={range}
+                        onClick={() => setNetWorthRange(range)}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                          netWorthRange === range
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        {range.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Chart */}
+                  <div className="h-80">
+                    {netWorthChartData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={netWorthChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis 
+                            dataKey="date" 
+                            stroke="#6b7280" 
+                            fontSize={12}
+                            tick={{ fill: '#6b7280' }}
+                          />
+                          <YAxis 
+                            stroke="#6b7280" 
+                            fontSize={12}
+                            tick={{ fill: '#6b7280' }}
+                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                          />
+                          <Tooltip
+                            contentStyle={{
+                              backgroundColor: '#fff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '8px',
+                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                            }}
+                            formatter={(value: any) => [formatCurrency(Number(value)), 'Net Worth']}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="netWorth"
+                            stroke="#3b82f6"
+                            strokeWidth={3}
+                            dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                            activeDot={{ r: 6, strokeWidth: 2 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                        <svg className="w-16 h-16 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p className="text-sm">No net worth data available</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </Card>
               
               {/* Expense Breakdown */}
-              <Card title="Expense Breakdown" description={`By category for ${format(new Date(selectedMonth), 'MMMM yyyy')}`}>
+              <Card title="Expense Breakdown" description={`By category for ${format(selectedMonthDate, 'MMMM yyyy')}`}>
                 <div className="h-80">
                   {expenseChartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -292,7 +408,14 @@ export function DashboardPage() {
                           cx="50%"
                           cy="50%"
                           labelLine={false}
-                          label={({ name, percent }: any) => `${name} (${((percent || 0) * 100).toFixed(0)}%)`}
+                          label={({ name, share }: any) => {
+                            // Only show label if category is >= 5% of total
+                            if (share >= 0.05) {
+                              const displayName = name.length > 12 ? name.substring(0, 12) + '...' : name;
+                              return `${displayName} (${(share * 100).toFixed(0)}%)`;
+                            }
+                            return '';
+                          }}
                           outerRadius={100}
                           fill="#8884d8"
                           dataKey="value"
@@ -302,17 +425,15 @@ export function DashboardPage() {
                           ))}
                         </Pie>
                         <Tooltip
-                          contentStyle={{
-                            backgroundColor: '#fff',
-                            border: '1px solid #e5e7eb',
-                            borderRadius: '8px',
-                            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                          }}
-                          formatter={(value: any) => [formatCurrency(Number(value)), 'Amount']}
+                          content={<ExpenseTooltip expenseTotalExpense={expenseTotalExpense} />}
                         />
                         <Legend 
                           wrapperStyle={{ fontSize: '12px' }}
                           iconType="circle"
+                          formatter={(value: string) => {
+                            // Truncate long category names in legend with ellipsis
+                            return value.length > 15 ? value.substring(0, 15) + '...' : value;
+                          }}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -322,7 +443,7 @@ export function DashboardPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                       </svg>
-                      <p className="text-sm">No expense data for selected month</p>
+                      <p className="text-sm">No expenses for selected month</p>
                     </div>
                   )}
                 </div>
@@ -331,7 +452,7 @@ export function DashboardPage() {
             
             {/* Top Spending Category */}
             {monthlySummary && monthlySummary.expenseBreakdown.length > 0 && (
-              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 mt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
@@ -357,7 +478,7 @@ export function DashboardPage() {
             )}
             
             {/* AI Insights Card (Beta) */}
-            <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
+            <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200 mt-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4 flex-1">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white flex-shrink-0 mt-1">
@@ -365,84 +486,25 @@ export function DashboardPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
                     </svg>
                   </div>
-                  <div>
+                  <div className="flex-1">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                       AI Insights <span className="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-1 rounded">Beta</span>
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Generate personalized financial insights powered by AI analysis
+                    <p className="text-sm text-gray-600 mt-2">
+                      AI Insights is being built to flag unusual spending, suggest smarter categorization, and generate weekly summaries. The UI is scaffolded; model-powered insights ship next.
                     </p>
                   </div>
                 </div>
                 <Button 
-                  onClick={() => setShowAIContext(!showAIContext)}
                   variant="outline"
                   className="flex-shrink-0"
-                  isLoading={loadingAI}
+                  disabled
                 >
-                  Generate Insights
+                  Coming soon
                 </Button>
               </div>
-              
-              {/* AI Context Display (for wiring) */}
-              {showAIContext && (
-                <div className="mt-4 pt-4 border-t border-indigo-200">
-                  {loadingAI ? (
-                    <div className="text-sm text-gray-600 italic">Loading context...</div>
-                  ) : aiContext ? (
-                    <div className="space-y-3">
-                      <div className="p-3 bg-white rounded border border-indigo-100">
-                        <p className="text-xs font-semibold text-gray-900 mb-2">Connected Data Summary</p>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-                          <div>
-                            <p className="text-gray-500">Accounts</p>
-                            <p className="font-bold text-gray-900">{aiContext.accounts.totalAccounts}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Assets</p>
-                            <p className="font-bold text-gray-900">{aiContext.assets.totalAssets}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Transactions</p>
-                            <p className="font-bold text-gray-900">{aiContext.transactions.totalCount}</p>
-                          </div>
-                          <div>
-                            <p className="text-gray-500">Categories</p>
-                            <p className="font-bold text-gray-900">{aiContext.categories.totalCategories}</p>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      <details className="p-3 bg-white rounded border border-indigo-100">
-                        <summary className="text-xs font-semibold text-gray-900 cursor-pointer hover:text-indigo-600">
-                          View Raw Context Data (Developer View)
-                        </summary>
-                        <pre className="mt-2 p-2 bg-gray-50 rounded text-xs overflow-x-auto text-gray-700">
-                          {JSON.stringify(aiContext, null, 2)}
-                        </pre>
-                      </details>
-                      
-                      <p className="text-xs text-gray-600 italic">
-                        💡 Next: Connect to OpenAI or similar LLM to generate insights based on this data.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="text-sm text-gray-600 italic">No context data available</div>
-                  )}
-                </div>
-              )}
             </Card>
           </>
-        )}
-
-        {import.meta.env.DEV && (
-          <div className="mt-6 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-1">
-            <div><span className="font-semibold">Debug:</span> Dashboard fetch diagnostics</div>
-            <div>User ID: {user?.id ?? 'none'}</div>
-            <div>Token present: {accessToken ? 'yes' : 'no'}</div>
-            <div>Last fetch: {lastFetchAt ? new Date(lastFetchAt).toLocaleString() : 'n/a'}</div>
-            <div>Transactions (from AI summary): {aiContext?.transactions.totalCount ?? 'n/a'}</div>
-          </div>
         )}
       </div>
     </div>
