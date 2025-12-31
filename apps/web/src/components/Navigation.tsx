@@ -1,9 +1,12 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
+import { useAuth } from '../auth/AuthProvider';
 
 export function Navigation() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut, user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isActive = (path: string): boolean => {
@@ -84,6 +87,25 @@ export function Navigation() {
             </div>
           </div>
 
+          {/* User menu - Desktop */}
+          <div className="hidden md:flex items-center gap-3">
+            {user && (
+              <button
+                onClick={async () => {
+                  await signOut();
+                  navigate('/login');
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:text-red-600 transition-colors"
+                title="Sign Out"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                <span>Sign Out</span>
+              </button>
+            )}
+          </div>
+
           {/* Mobile menu button */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -128,6 +150,25 @@ export function Navigation() {
                 )}
               </Link>
             ))}
+            
+            {/* Mobile Sign Out */}
+            {user && (
+              <div className="border-t border-gray-200 mt-3 pt-4 px-2">
+                <button
+                  onClick={async () => {
+                    setMobileMenuOpen(false);
+                    await signOut();
+                    navigate('/login');
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 rounded-lg text-base font-medium text-gray-600 hover:text-red-600 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
