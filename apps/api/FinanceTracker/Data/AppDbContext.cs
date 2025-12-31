@@ -16,6 +16,7 @@ public class AppDbContext : DbContext
     public DbSet<Transaction> Transactions => Set<Transaction>();
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<AccountSnapshot> AccountSnapshots => Set<AccountSnapshot>();
+    public DbSet<Asset> Assets => Set<Asset>();
 
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -59,11 +60,18 @@ public class AppDbContext : DbContext
         // Account property constraints
         modelBuilder.Entity<Account>(e =>
         {
-            e.Property(x => x.Ticker).HasMaxLength(20);
-            e.Property(x => x.AssetClass).HasMaxLength(30);
+            e.Property(x => x.Institution).HasMaxLength(100);
+            e.Property(x => x.Currency).HasMaxLength(10).HasDefaultValue("USD");
         });
 
+        // Asset property constraints
+        modelBuilder.Entity<Asset>(e =>
+        {
+            e.Property(x => x.Quantity).HasPrecision(18, 8);
+            e.Property(x => x.CostBasisTotal).HasPrecision(18, 2);
+            e.HasIndex(x => x.AssetClass);
+            e.HasIndex(x => x.CreatedAt);
+        });
     }
-
 }
 

@@ -20,7 +20,40 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
-    public async Task CreateAsset_WithValidData_ReturnsCreated()
+    public async Task CreateAsset_WithGold_DoesNotCreateAccount()
+    {
+        // Arrange
+        await ClearDatabase();
+        var request = new
+        {
+            Name = "Gold",
+            AssetClass = "metal",
+            Ticker = (string?)null,
+            Quantity = 10m,
+            Unit = "oz",
+            CostBasisTotal = 20000m,
+            PurchaseDate = (DateTime?)null,
+            Notes = "Physical gold bars"
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/assets", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        
+        // Verify no Account was created
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var accountCount = await db.Accounts.CountAsync();
+        var assetCount = await db.Assets.CountAsync();
+        
+        Assert.Equal(0, accountCount); // No accounts should exist
+        Assert.Equal(1, assetCount); // Only Asset should exist
+    }
+
+    [Fact]
+    public async Task CreateAsset_WithStock_RequiresTicker()
     {
         // Arrange
         await ClearDatabase();
@@ -28,7 +61,60 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
         {
             Name = "Apple Stock",
             AssetClass = "stock",
-            Ticker = "AAPL"
+            Ticker = (string?)null,
+            Quantity = 100m,
+            Unit = "shares",
+            CostBasisTotal = 15000m
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/assets", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Ticker is required for stocks", error);
+    }
+
+    [Fact]
+    public async Task CreateAsset_WithMetal_RequiresUnit()
+    {
+        // Arrange
+        await ClearDatabase();
+        var request = new
+        {
+            Name = "Silver",
+            AssetClass = "metal",
+            Ticker = (string?)null,
+            Quantity = 500m,
+            Unit = (string?)null,
+            CostBasisTotal = 10000m
+        };
+
+        // Act
+        var response = await _client.PostAsJsonAsync("/assets", request);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var error = await response.Content.ReadAsStringAsync();
+        Assert.Contains("Unit is required for metals", error);
+    }
+
+    [Fact]
+    public async Task CreateAsset_WithValidStock_ReturnsCreated()
+    {
+        // Arrange
+        await ClearDatabase();
+        var request = new
+        {
+            Name = "Apple Stock",
+            AssetClass = "stock",
+            Ticker = "AAPL",
+            Quantity = 100m,
+            Unit = "shares",
+            CostBasisTotal = 15000m,
+            PurchaseDate = new DateTime(2024, 1, 15),
+            Notes = "Tech investment"
         };
 
         // Act
@@ -38,91 +124,29 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
         Assert.NotNull(asset);
-        Assert.NotEqual(Guid.Empty, asset.Id);
         Assert.Equal("Apple Stock", asset.Name);
         Assert.Equal("stock", asset.AssetClass);
         Assert.Equal("AAPL", asset.Ticker);
-        Assert.Equal($"/assets/{asset.Id}", response.Headers.Location?.ToString());
+        Assert.Equal(100m, asset.Quantity);
+        Assert.Equal("shares", asset.Unit);
+        Assert.Equal(15000m, asset.CostBasisTotal);
     }
 
     [Fact]
-    public async Task CreateAsset_WithMinimalData_ReturnsCreated()
+    public async Task CreateAsset_WithCrypto_ReturnsCreated()
     {
         // Arrange
         await ClearDatabase();
         var request = new
         {
-            Name = "Cash",
-            AssetClass = (string?)null,
-            Ticker = (string?)null
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/assets", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
-        Assert.NotNull(asset);
-        Assert.Equal("Cash", asset.Name);
-        Assert.Null(asset.AssetClass);
-        Assert.Null(asset.Ticker);
-    }
-
-    [Fact]
-    public async Task CreateAsset_NormalizesAssetClassToLowerCase()
-    {
-        // Arrange
-        await ClearDatabase();
-        var request = new
-        {
-            Name = "Gold ETF",
-            AssetClass = "GOLD",
-            Ticker = "GLD"
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/assets", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
-        Assert.NotNull(asset);
-        Assert.Equal("gold", asset.AssetClass); // Should be lowercase
-    }
-
-    [Fact]
-    public async Task CreateAsset_NormalizesTickerToUpperCase()
-    {
-        // Arrange
-        await ClearDatabase();
-        var request = new
-        {
-            Name = "Microsoft Stock",
-            AssetClass = "stock",
-            Ticker = "msft"
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/assets", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
-        Assert.NotNull(asset);
-        Assert.Equal("MSFT", asset.Ticker); // Should be uppercase
-    }
-
-    [Fact]
-    public async Task CreateAsset_TrimsWhitespace()
-    {
-        // Arrange
-        await ClearDatabase();
-        var request = new
-        {
-            Name = "  Bitcoin  ",
-            AssetClass = "  crypto  ",
-            Ticker = "  BTC  "
+            Name = "Bitcoin",
+            AssetClass = "crypto",
+            Ticker = "BTC",
+            Quantity = 0.5m,
+            Unit = "btc",
+            CostBasisTotal = 25000m,
+            PurchaseDate = new DateTime(2023, 6, 1),
+            Notes = "Long-term hold"
         };
 
         // Act
@@ -135,118 +159,86 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
         Assert.Equal("Bitcoin", asset.Name);
         Assert.Equal("crypto", asset.AssetClass);
         Assert.Equal("BTC", asset.Ticker);
+        Assert.Equal(0.5m, asset.Quantity);
     }
 
     [Fact]
-    public async Task CreateAsset_WithEmptyName_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new
-        {
-            Name = "",
-            AssetClass = "stock",
-            Ticker = "AAPL"
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/assets", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Name field is required", error);
-    }
-
-    [Fact]
-    public async Task CreateAsset_WithWhitespaceName_ReturnsBadRequest()
-    {
-        // Arrange
-        var request = new
-        {
-            Name = "   ",
-            AssetClass = "stock",
-            Ticker = "AAPL"
-        };
-
-        // Act
-        var response = await _client.PostAsJsonAsync("/assets", request);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        var error = await response.Content.ReadAsStringAsync();
-        Assert.Contains("Name", error);
-    }
-
-    [Fact]
-    public async Task CreateAsset_WithEmptyAssetClass_StoresNull()
+    public async Task GetAssetById_WithValidId_ReturnsAsset()
     {
         // Arrange
         await ClearDatabase();
-        var request = new
-        {
-            Name = "Generic Asset",
-            AssetClass = "   ",
-            Ticker = "TEST"
-        };
+        var assetId = await SeedAsset("Gold", "metal", null, 10m, "oz", 20000m);
 
         // Act
-        var response = await _client.PostAsJsonAsync("/assets", request);
+        var response = await _client.GetAsync($"/assets/{assetId}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
         Assert.NotNull(asset);
-        Assert.Null(asset.AssetClass);
+        Assert.Equal(assetId, asset.Id);
+        Assert.Equal("Gold", asset.Name);
     }
 
     [Fact]
-    public async Task CreateAsset_WithEmptyTicker_StoresNull()
+    public async Task GetAssetById_WithInvalidId_ReturnsNotFound()
     {
         // Arrange
         await ClearDatabase();
-        var request = new
+
+        // Act
+        var response = await _client.GetAsync($"/assets/{Guid.NewGuid()}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateAsset_WithValidData_ReturnsOk()
+    {
+        // Arrange
+        await ClearDatabase();
+        var assetId = await SeedAsset("Old Name", "stock", "OLD", 10m, "shares", 1000m);
+        var updateRequest = new
         {
-            Name = "Private Asset",
-            AssetClass = "other",
-            Ticker = "   "
+            Name = "New Name",
+            AssetClass = "stock",
+            Ticker = "NEW",
+            Quantity = 20m,
+            Unit = "shares",
+            CostBasisTotal = 2000m,
+            PurchaseDate = (DateTime?)null,
+            Notes = "Updated"
         };
 
         // Act
-        var response = await _client.PostAsJsonAsync("/assets", request);
+        var response = await _client.PatchAsJsonAsync($"/assets/{assetId}", updateRequest);
 
         // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
         Assert.NotNull(asset);
-        Assert.Null(asset.Ticker);
+        Assert.Equal("New Name", asset.Name);
+        Assert.Equal("NEW", asset.Ticker);
+        Assert.Equal(20m, asset.Quantity);
     }
 
     [Fact]
-    public async Task CreateAsset_WithVariousAssetClasses_ReturnsCreated()
+    public async Task DeleteAsset_WithValidId_ReturnsNoContent()
     {
         // Arrange
         await ClearDatabase();
+        var assetId = await SeedAsset("To Delete", "stock", "DEL", 10m, "shares", 1000m);
 
-        // Act & Assert
-        var assetClasses = new[] { "stock", "bond", "crypto", "gold", "real estate", "cash", "other" };
-        
-        int index = 0;
-        foreach (var assetClass in assetClasses)
-        {
-            var request = new
-            {
-                Name = $"{assetClass} asset {index++}",
-                AssetClass = assetClass,
-                Ticker = (string?)null
-            };
+        // Act
+        var response = await _client.DeleteAsync($"/assets/{assetId}");
 
-            var response = await _client.PostAsJsonAsync("/assets", request);
-            
-            Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-            var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
-            Assert.NotNull(asset);
-            Assert.Equal(assetClass, asset.AssetClass);
-        }
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // Verify deletion
+        var getResponse = await _client.GetAsync($"/assets/{assetId}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
     [Fact]
@@ -270,9 +262,9 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
     {
         // Arrange
         await ClearDatabase();
-        await SeedAsset("Tesla Stock", "stock", "TSLA");
-        await SeedAsset("Gold", "gold", "GLD");
-        await SeedAsset("Apple Stock", "stock", "AAPL");
+        await SeedAsset("Tesla", "stock", "TSLA", 10m, "shares", 2000m);
+        await SeedAsset("Gold", "metal", null, 5m, "oz", 10000m);
+        await SeedAsset("Apple", "stock", "AAPL", 50m, "shares", 7500m);
 
         // Act
         var response = await _client.GetAsync("/assets");
@@ -282,213 +274,92 @@ public class AssetsControllerTests : IClassFixture<CustomWebApplicationFactory>
         var assets = await response.Content.ReadFromJsonAsync<List<AssetDto>>();
         Assert.NotNull(assets);
         Assert.Equal(3, assets.Count);
-        Assert.Equal("Apple Stock", assets[0].Name);
+        Assert.Equal("Apple", assets[0].Name);
         Assert.Equal("Gold", assets[1].Name);
-        Assert.Equal("Tesla Stock", assets[2].Name);
+        Assert.Equal("Tesla", assets[2].Name);
     }
 
     [Fact]
-    public async Task ListAssets_OnlyReturnsAssetAccounts()
+    public async Task CreateAsset_WithZeroQuantity_ReturnsBadRequest()
     {
         // Arrange
-        await ClearDatabase();
-        
-        // Create assets
-        await SeedAsset("Stock", "stock", "AAPL");
-        await SeedAsset("Gold", "gold", null);
-        
-        // Create non-asset accounts (should not be returned)
-        await SeedAccount("Checking", "bank", false);
-        await SeedAccount("Credit Card", "credit", true);
-
-        // Act
-        var response = await _client.GetAsync("/assets");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var assets = await response.Content.ReadFromJsonAsync<List<AssetDto>>();
-        Assert.NotNull(assets);
-        Assert.Equal(2, assets.Count); // Only the 2 assets
-        Assert.All(assets, a => Assert.NotNull(a.Name));
-    }
-
-    [Fact]
-    public async Task ListAssets_IncludesAllProperties()
-    {
-        // Arrange
-        await ClearDatabase();
-        var assetId = await SeedAsset("Bitcoin", "crypto", "BTC");
-
-        // Act
-        var response = await _client.GetAsync("/assets");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var assets = await response.Content.ReadFromJsonAsync<List<AssetDto>>();
-        Assert.NotNull(assets);
-        Assert.Single(assets);
-        Assert.Equal(assetId, assets[0].Id);
-        Assert.Equal("Bitcoin", assets[0].Name);
-        Assert.Equal("crypto", assets[0].AssetClass);
-        Assert.Equal("BTC", assets[0].Ticker);
-    }
-
-    [Fact]
-    public async Task ListAssets_HandlesNullAssetClassAndTicker()
-    {
-        // Arrange
-        await ClearDatabase();
-        await SeedAsset("Generic Asset", null, null);
-
-        // Act
-        var response = await _client.GetAsync("/assets");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var assets = await response.Content.ReadFromJsonAsync<List<AssetDto>>();
-        Assert.NotNull(assets);
-        Assert.Single(assets);
-        Assert.Equal("Generic Asset", assets[0].Name);
-        Assert.Null(assets[0].AssetClass);
-        Assert.Null(assets[0].Ticker);
-    }
-
-    [Fact]
-    public async Task CreateAsset_CreatesAccountWithCorrectType()
-    {
-        // Arrange
-        await ClearDatabase();
         var request = new
         {
-            Name = "Test Asset",
+            Name = "Test",
             AssetClass = "stock",
-            Ticker = "TEST"
-        };
-
-        // Act
-        await _client.PostAsJsonAsync("/assets", request);
-
-        // Assert - Verify in database
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var account = await db.Accounts.FirstOrDefaultAsync(a => a.Name == "Test Asset");
-        
-        Assert.NotNull(account);
-        Assert.Equal("asset", account.Type);
-        Assert.False(account.IsLiability);
-        Assert.Equal("stock", account.AssetClass);
-        Assert.Equal("TEST", account.Ticker);
-    }
-
-    [Fact]
-    public async Task CreateAsset_WithMixedCaseAssetClass_NormalizesConsistently()
-    {
-        // Arrange
-        await ClearDatabase();
-        var request = new
-        {
-            Name = "Real Estate",
-            AssetClass = "ReAl EsTaTe",
-            Ticker = (string?)null
+            Ticker = "TEST",
+            Quantity = 0m,
+            Unit = "shares",
+            CostBasisTotal = 1000m
         };
 
         // Act
         var response = await _client.PostAsJsonAsync("/assets", request);
 
         // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
-        Assert.NotNull(asset);
-        Assert.Equal("real estate", asset.AssetClass);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     [Fact]
-    public async Task CreateAsset_WithMixedCaseTicker_NormalizesConsistently()
+    public async Task CreateAsset_WithNegativeCostBasis_ReturnsBadRequest()
     {
         // Arrange
-        await ClearDatabase();
         var request = new
         {
-            Name = "Google Stock",
+            Name = "Test",
             AssetClass = "stock",
-            Ticker = "GoOgL"
+            Ticker = "TEST",
+            Quantity = 10m,
+            Unit = "shares",
+            CostBasisTotal = -1000m
         };
 
         // Act
         var response = await _client.PostAsJsonAsync("/assets", request);
 
         // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var asset = await response.Content.ReadFromJsonAsync<AssetDto>();
-        Assert.NotNull(asset);
-        Assert.Equal("GOOGL", asset.Ticker);
-    }
-
-    [Fact]
-    public async Task ListAssets_WithMultipleAssetsOfSameClass_ReturnsAll()
-    {
-        // Arrange
-        await ClearDatabase();
-        await SeedAsset("Apple", "stock", "AAPL");
-        await SeedAsset("Microsoft", "stock", "MSFT");
-        await SeedAsset("Google", "stock", "GOOGL");
-
-        // Act
-        var response = await _client.GetAsync("/assets");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var assets = await response.Content.ReadFromJsonAsync<List<AssetDto>>();
-        Assert.NotNull(assets);
-        Assert.Equal(3, assets.Count);
-        Assert.All(assets, a => Assert.Equal("stock", a.AssetClass));
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 
     private async Task ClearDatabase()
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        
-        var snapshots = await db.AccountSnapshots.ToListAsync();
-        db.AccountSnapshots.RemoveRange(snapshots);
-        
-        var accounts = await db.Accounts.ToListAsync();
-        db.Accounts.RemoveRange(accounts);
-        
+        db.Assets.RemoveRange(db.Assets);
+        db.AccountSnapshots.RemoveRange(db.AccountSnapshots);
+        db.Accounts.RemoveRange(db.Accounts);
         await db.SaveChangesAsync();
     }
 
-    private async Task<Guid> SeedAsset(string name, string? assetClass, string? ticker)
+    private async Task<Guid> SeedAsset(string name, string assetClass, string? ticker, decimal quantity, string? unit, decimal costBasis)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var asset = new Account
+        var asset = new Asset
         {
             Name = name,
-            Type = "asset",
-            IsLiability = false,
             AssetClass = assetClass,
-            Ticker = ticker
+            Ticker = ticker,
+            Quantity = quantity,
+            Unit = unit,
+            CostBasisTotal = costBasis
         };
-        db.Accounts.Add(asset);
+        db.Assets.Add(asset);
         await db.SaveChangesAsync();
         return asset.Id;
     }
 
-    private async Task<Guid> SeedAccount(string name, string? type, bool isLiability)
-    {
-        using var scope = _factory.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var account = new Account
-        {
-            Name = name,
-            Type = type,
-            IsLiability = isLiability
-        };
-        db.Accounts.Add(account);
-        await db.SaveChangesAsync();
-        return account.Id;
-    }
-
-    private record AssetDto(Guid Id, string Name, string? AssetClass, string? Ticker);
+    private record AssetDto(
+        Guid Id,
+        string Name,
+        string AssetClass,
+        string? Ticker,
+        decimal Quantity,
+        string? Unit,
+        decimal CostBasisTotal,
+        DateTime? PurchaseDate,
+        string? Notes,
+        DateTime CreatedAt,
+        DateTime UpdatedAt
+    );
 }

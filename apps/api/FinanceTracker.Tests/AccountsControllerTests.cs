@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using FinanceTracker.Api.Models;
 using FinanceTracker.Data;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -23,7 +24,7 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
     {
         // Arrange
         await ClearDatabase();
-        var request = new { Name = "Checking Account", Type = "bank", IsLiability = false };
+        var request = new { Name = "Checking Account", Institution = "Chase", Type = "bank", Currency = "USD", IsLiability = false };
 
         // Act
         var response = await _client.PostAsJsonAsync("/accounts", request);
@@ -34,7 +35,9 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         Assert.NotNull(account);
         Assert.NotEqual(Guid.Empty, account.Id);
         Assert.Equal("Checking Account", account.Name);
+        Assert.Equal("Chase", account.Institution);
         Assert.Equal("bank", account.Type);
+        Assert.Equal("USD", account.Currency);
         Assert.False(account.IsLiability);
         Assert.Equal($"/accounts/{account.Id}", response.Headers.Location?.ToString());
     }
@@ -44,7 +47,7 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
     {
         // Arrange
         await ClearDatabase();
-        var request = new { Name = "Cash", Type = (string?)null, IsLiability = false };
+        var request = new { Name = "Cash", Type = (string?)null, Currency = "USD", IsLiability = false };
 
         // Act
         var response = await _client.PostAsJsonAsync("/accounts", request);
@@ -55,6 +58,7 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         Assert.NotNull(account);
         Assert.Equal("Cash", account.Name);
         Assert.Null(account.Type);
+        Assert.Equal("USD", account.Currency);
         Assert.False(account.IsLiability);
     }
 
@@ -142,6 +146,165 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
     }
 
     [Fact]
+    public async Task GetAccountById_WithValidId_ReturnsAccountDetail()
+    {
+        // Arrange
+        await ClearDatabase();
+        var accountId = await SeedAccount("Savings", "Chase", "bank", "USD", false);
+        await SeedSnapshot(accountId, new DateOnly(2025, 1, 1), 1000m);
+        await SeedSnapshot(accountId, new DateOnly(2025, 1, 15), 1500m);
+
+        // Act
+        var response = await _client.GetAsync($"/accounts/{accountId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var account = await response.Content.ReadFromJsonAsync<AccountDetailDto>();
+        Assert.NotNull(account);
+        Assert.Equal(accountId, account.Id);
+        Assert.Equal("Savings", account.Name);
+        Assert.Equal("Chase", account.Institution);
+        Assert.Equal(1500m, account.LatestBalance);
+        Assert.Equal(new DateOnly(2025, 1, 15), account.LatestBalanceDate);
+        Assert.Equal(2, account.SnapshotCount);
+    }
+
+    [Fact]
+    public async Task GetAccountById_WithNoSnapshots_ReturnsNullBalance()
+    {
+        // Arrange
+        await ClearDatabase();
+        var accountId = await SeedAccount("Empty Account", null, "bank", "USD", false);
+
+        // Act
+        var response = await _client.GetAsync($"/accounts/{accountId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var account = await response.Content.ReadFromJsonAsync<AccountDetailDto>();
+        Assert.NotNull(account);
+        Assert.Null(account.LatestBalance);
+        Assert.Null(account.LatestBalanceDate);
+        Assert.Equal(0, account.SnapshotCount);
+    }
+
+    [Fact]
+    public async Task GetAccountById_WithInvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        await ClearDatabase();
+
+        // Act
+        var response = await _client.GetAsync($"/accounts/{Guid.NewGuid()}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateAccount_WithValidData_ReturnsOk()
+    {
+        // Arrange
+        await ClearDatabase();
+        var accountId = await SeedAccount("Old Name", "Old Bank", "bank", "USD", false);
+        var updateRequest = new { Name = "New Name", Institution = "New Bank", Type = "savings", Currency = "EUR" };
+
+        // Act
+        var response = await _client.PatchAsJsonAsync($"/accounts/{accountId}", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var account = await response.Content.ReadFromJsonAsync<AccountDto>();
+        Assert.NotNull(account);
+        Assert.Equal("New Name", account.Name);
+        Assert.Equal("New Bank", account.Institution);
+        Assert.Equal("savings", account.Type);
+        Assert.Equal("EUR", account.Currency);
+    }
+
+    [Fact]
+    public async Task UpdateAccount_WithInvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        await ClearDatabase();
+        var updateRequest = new { Name = "Test", Institution = (string?)null, Type = "bank", Currency = "USD" };
+
+        // Act
+        var response = await _client.PatchAsJsonAsync($"/accounts/{Guid.NewGuid()}", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task UpdateAccount_WithEmptyName_ReturnsBadRequest()
+    {
+        // Arrange
+        await ClearDatabase();
+        var accountId = await SeedAccount("Test", null, "bank", "USD", false);
+        var updateRequest = new { Name = "", Institution = (string?)null, Type = "bank", Currency = "USD" };
+
+        // Act
+        var response = await _client.PatchAsJsonAsync($"/accounts/{accountId}", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteAccount_WithValidId_ReturnsNoContent()
+    {
+        // Arrange
+        await ClearDatabase();
+        var accountId = await SeedAccount("To Delete", null, "bank", "USD", false);
+
+        // Act
+        var response = await _client.DeleteAsync($"/accounts/{accountId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // Verify deletion
+        var getResponse = await _client.GetAsync($"/accounts/{accountId}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task DeleteAccount_WithSnapshots_CascadesDelete()
+    {
+        // Arrange
+        await ClearDatabase();
+        var accountId = await SeedAccount("With Snapshots", null, "bank", "USD", false);
+        await SeedSnapshot(accountId, new DateOnly(2025, 1, 1), 1000m);
+        await SeedSnapshot(accountId, new DateOnly(2025, 1, 15), 1500m);
+
+        // Act
+        var response = await _client.DeleteAsync($"/accounts/{accountId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // Verify snapshots were also deleted
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var snapshots = await db.AccountSnapshots.Where(s => s.AccountId == accountId).ToListAsync();
+        Assert.Empty(snapshots);
+    }
+
+    [Fact]
+    public async Task DeleteAccount_WithInvalidId_ReturnsNotFound()
+    {
+        // Arrange
+        await ClearDatabase();
+
+        // Act
+        var response = await _client.DeleteAsync($"/accounts/{Guid.NewGuid()}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
     public async Task ListAccounts_WithNoAccounts_ReturnsEmptyList()
     {
         // Arrange
@@ -162,9 +325,9 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
     {
         // Arrange
         await ClearDatabase();
-        await SeedAccount("Savings", "bank", false);
-        await SeedAccount("Credit Card", "credit", true);
-        await SeedAccount("Cash", null, false);
+        await SeedAccount("Savings", "Chase", "bank", "USD", false);
+        await SeedAccount("Credit Card", "Visa", "credit", "USD", true);
+        await SeedAccount("Cash", null, null, "USD", false);
 
         // Act
         var response = await _client.GetAsync("/accounts");
@@ -179,44 +342,26 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         Assert.Equal("Savings", accounts[2].Name);
     }
 
-    [Fact]
-    public async Task ListAccounts_IncludesAllProperties()
-    {
-        // Arrange
-        await ClearDatabase();
-        var accountId = await SeedAccount("Investment", "investment", false);
-
-        // Act
-        var response = await _client.GetAsync("/accounts");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var accounts = await response.Content.ReadFromJsonAsync<List<AccountDto>>();
-        Assert.NotNull(accounts);
-        Assert.Single(accounts);
-        Assert.Equal(accountId, accounts[0].Id);
-        Assert.Equal("Investment", accounts[0].Name);
-        Assert.Equal("investment", accounts[0].Type);
-        Assert.False(accounts[0].IsLiability);
-    }
-
     private async Task ClearDatabase()
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.AccountSnapshots.RemoveRange(db.AccountSnapshots);
         db.Accounts.RemoveRange(db.Accounts);
+        db.Assets.RemoveRange(db.Assets);
         await db.SaveChangesAsync();
     }
 
-    private async Task<Guid> SeedAccount(string name, string? type, bool isLiability)
+    private async Task<Guid> SeedAccount(string name, string? institution, string? type, string currency, bool isLiability)
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var account = new Account
         {
             Name = name,
+            Institution = institution,
             Type = type,
+            Currency = currency,
             IsLiability = isLiability
         };
         db.Accounts.Add(account);
@@ -224,5 +369,20 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         return account.Id;
     }
 
-    private record AccountDto(Guid Id, string Name, string? Type, bool IsLiability);
+    private async Task SeedSnapshot(Guid accountId, DateOnly date, decimal balance)
+    {
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var snapshot = new AccountSnapshot
+        {
+            AccountId = accountId,
+            Date = date,
+            Balance = balance
+        };
+        db.AccountSnapshots.Add(snapshot);
+        await db.SaveChangesAsync();
+    }
+
+    private record AccountDto(Guid Id, string Name, string? Institution, string? Type, string Currency, bool IsLiability, DateTime CreatedAt, DateTime UpdatedAt);
+    private record AccountDetailDto(Guid Id, string Name, string? Institution, string? Type, string Currency, bool IsLiability, DateTime CreatedAt, DateTime UpdatedAt, decimal? LatestBalance, DateOnly? LatestBalanceDate, int SnapshotCount);
 }
