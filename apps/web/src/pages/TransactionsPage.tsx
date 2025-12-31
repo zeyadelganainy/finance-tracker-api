@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parseISO } from 'date-fns';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
 import { Transaction, PagedResponse, Category, CreateTransactionRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
@@ -46,7 +46,7 @@ export function TransactionsPage() {
       if (filters.from) params.append('from', filters.from);
       if (filters.to) params.append('to', filters.to);
       
-      const data = await api<PagedResponse<Transaction>>(`/transactions?${params}`);
+      const data = await apiFetch<PagedResponse<Transaction>>(`/transactions?${params}`);
       return data;
     },
   });
@@ -54,12 +54,12 @@ export function TransactionsPage() {
   // Fetch categories for dropdowns
   const { data: categories = [] } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => api<Category[]>('/categories'),
+    queryFn: () => apiFetch<Category[]>('/categories'),
   });
   
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => api(`/transactions/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => apiFetch(`/transactions/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       showToast('Transaction deleted successfully', 'success');
@@ -74,9 +74,9 @@ export function TransactionsPage() {
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: CreateTransactionRequest }) => {
       // Delete old transaction
-      await api(`/transactions/${id}`, { method: 'DELETE' });
+      await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
       // Create new one with updated data
-      return api<Transaction>('/transactions', {
+      return apiFetch<Transaction>('/transactions', {
         method: 'POST',
         body: JSON.stringify(data),
       });
@@ -502,7 +502,7 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
   
   const createMutation = useMutation({
     mutationFn: (data: CreateTransactionRequest) =>
-      api<Transaction>('/transactions', {
+      apiFetch<Transaction>('/transactions', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

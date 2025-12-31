@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { Category } from '../types/api';
 
 export function useCategories() {
@@ -15,7 +15,7 @@ export function useCategories() {
     try {
       setLoading(true);
       setError(null);
-      const data = await api<Category[]>('/categories');
+      const data = await apiFetch<Category[]>('/categories');
       if (data) {
         setCategories(data);
       }

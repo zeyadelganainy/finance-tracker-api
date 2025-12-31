@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { Asset, CreateAssetRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
@@ -19,7 +19,7 @@ export function AssetsPage() {
   // Fetch assets
   const { data: assets = [], isLoading } = useQuery({
     queryKey: ['assets'],
-    queryFn: () => api<Asset[]>('/assets'),
+    queryFn: () => apiFetch<Asset[]>('/assets'),
   });
   
   // Fetch valuations (AI-ready, currently stub)
@@ -167,7 +167,7 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
   
   const createMutation = useMutation({
     mutationFn: (data: CreateAssetRequest) =>
-      api<Asset>('/assets', {
+      apiFetch<Asset>('/assets', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

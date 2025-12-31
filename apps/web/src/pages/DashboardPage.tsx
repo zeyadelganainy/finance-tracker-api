@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { format, subMonths } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
 import { NetWorthHistoryResponse, MonthlySummary, NetWorthDataPoint } from '../types/api';
 import { StatCard, Card } from '../components/ui/Card';
@@ -28,13 +28,13 @@ export function DashboardPage() {
   // Fetch net worth history
   const { data: netWorthData, isLoading: loadingNetWorth } = useQuery({
     queryKey: ['networth', sixMonthsAgo, today],
-    queryFn: () => api<NetWorthHistoryResponse>(`/networth/history?from=${sixMonthsAgo}&to=${today}`),
+    queryFn: () => apiFetch<NetWorthHistoryResponse>(`/networth/history?from=${sixMonthsAgo}&to=${today}`),
   });
   
   // Fetch monthly summary
   const { data: monthlySummary, isLoading: loadingSummary } = useQuery({
     queryKey: ['summary', selectedMonth],
-    queryFn: () => api<MonthlySummary>(`/summary/monthly?month=${selectedMonth}`),
+    queryFn: () => apiFetch<MonthlySummary>(`/summary/monthly?month=${selectedMonth}`),
   });
   
   // Generate month options (last 12 months)

@@ -1,13 +1,23 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../auth/AuthProvider';
 
 export function LoginPage() {
-  const { signIn, signInAsDemo, isLoading, demoEnabled, demoError } = useAuth();
+  const { signIn, signInAsDemo, isLoading, demoEnabled } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const navigate = useNavigate();
+
+  // Check for session expiry message
+  useEffect(() => {
+    const message = sessionStorage.getItem('auth_redirect_message');
+    if (message) {
+      setInfo(message);
+      sessionStorage.removeItem('auth_redirect_message');
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -16,7 +26,8 @@ export function LoginPage() {
       await signIn(email, password);
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign in');
+      const message = err instanceof Error ? err.message : 'Failed to sign in';
+      setError(message);
     }
   };
 
@@ -38,9 +49,26 @@ export function LoginPage() {
           <p className="text-sm text-gray-600 mt-1">Access your Finance Tracker</p>
         </div>
 
+        {info && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm px-4 py-3 rounded-lg">
+            {info}
+          </div>
+        )}
+
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded">
-            {error}
+          <div className={`border text-sm px-4 py-3 rounded-lg ${
+            error.includes('verified') || error.includes('verify')
+              ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
+              : 'bg-red-50 border-red-200 text-red-700'
+          }`}>
+            {error.includes('verified') || error.includes('verify') ? (
+              <>
+                <p className="font-medium mb-1">Email Verification Required</p>
+                <p>{error}</p>
+              </>
+            ) : (
+              error
+            )}
           </div>
         )}
 
@@ -78,18 +106,37 @@ export function LoginPage() {
           </button>
         </form>
 
+        {/* Demo Mode */}
+        {demoEnabled && (
+          <>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-200"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDemo}
+              disabled={isLoading}
+              className="w-full bg-gray-900 text-white py-2 rounded-lg font-semibold hover:bg-gray-800 transition disabled:opacity-50 flex items-center justify-center gap-2"
+              title="Sign in with demo account to explore features"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Continue as Demo
+            </button>
+          </>
+        )}
+
         <div className="space-y-2">
-          <button
-            type="button"
-            onClick={handleDemo}
-            disabled={!demoEnabled || isLoading}
-            className="w-full bg-gray-900 text-white py-2 rounded-lg font-semibold hover:bg-gray-800 transition disabled:opacity-50"
-          >
-            {demoEnabled ? 'Continue as Demo' : demoError || 'Demo unavailable'}
-          </button>
           <p className="text-center text-sm text-gray-600">
             Don&apos;t have an account?{' '}
-            <Link to="/register" className="text-blue-600 hover:underline">
+            <Link to="/register" className="text-blue-600 hover:underline font-medium">
               Create one
             </Link>
           </p>

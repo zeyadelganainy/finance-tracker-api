@@ -25,6 +25,8 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   if (response.status === 401) {
     await supabase.auth.signOut();
+    // Store a message to show on the login page
+    sessionStorage.setItem('auth_redirect_message', 'Your session has expired. Please sign in again.');
     window.location.href = '/login';
     throw new Error('Unauthorized');
   }

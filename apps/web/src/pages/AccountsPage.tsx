@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { Account, CreateAccountRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
@@ -20,7 +20,7 @@ export function AccountsPage() {
   // Fetch accounts
   const { data: accounts = [], isLoading } = useQuery({
     queryKey: ['accounts'],
-    queryFn: () => api<Account[]>('/accounts'),
+    queryFn: () => apiFetch<Account[]>('/accounts'),
   });
   
   return (
@@ -140,7 +140,7 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
   
   const createMutation = useMutation({
     mutationFn: (data: CreateAccountRequest) =>
-      api<Account>('/accounts', {
+      apiFetch<Account>('/accounts', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

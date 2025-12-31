@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { useCategories } from '../hooks/useCategories';
 
 interface FormData {
@@ -62,7 +62,7 @@ export function AddTransactionPage() {
         description: formData.description.trim() || undefined,
       };
 
-      await api('/transactions', {
+      await apiFetch('/transactions', {
         method: 'POST',
         body: JSON.stringify(payload),
       });

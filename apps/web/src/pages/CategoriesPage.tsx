@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { Category, CreateCategoryRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
@@ -17,7 +17,7 @@ export function CategoriesPage() {
   // Fetch categories
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ['categories'],
-    queryFn: () => api<Category[]>('/categories'),
+    queryFn: () => apiFetch<Category[]>('/categories'),
   });
   
   return (
@@ -116,7 +116,7 @@ function CreateCategoryModal({ onClose, onSuccess }: CreateCategoryModalProps) {
   
   const createMutation = useMutation({
     mutationFn: (data: CreateCategoryRequest) =>
-      api<Category>('/categories', {
+      apiFetch<Category>('/categories', {
         method: 'POST',
         body: JSON.stringify(data),
       }),

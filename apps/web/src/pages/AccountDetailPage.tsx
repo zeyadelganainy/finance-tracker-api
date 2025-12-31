@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
-import { api } from '../lib/api';
+import { apiFetch } from '../lib/apiClient';
 import { AccountDetail, AccountSnapshot, UpsertSnapshotRequest, UpdateAccountRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
@@ -28,21 +28,21 @@ export function AccountDetailPage() {
   // Fetch account details
   const { data: account, isLoading: loadingAccount } = useQuery({
     queryKey: ['account', id],
-    queryFn: () => api<AccountDetail>(`/accounts/${id}`),
+    queryFn: () => apiFetch<AccountDetail>(`/accounts/${id}`),
     enabled: !!id,
   });
   
   // Fetch account snapshots
   const { data: snapshots = [], isLoading: loadingSnapshots } = useQuery({
     queryKey: ['account-snapshots', id],
-    queryFn: () => api<AccountSnapshot[]>(`/accounts/${id}/snapshots`),
+    queryFn: () => apiFetch<AccountSnapshot[]>(`/accounts/${id}/snapshots`),
     enabled: !!id,
   });
   
   // Upsert snapshot mutation
   const upsertSnapshotMutation = useMutation({
     mutationFn: ({ date, data }: { date: string; data: UpsertSnapshotRequest }) =>
-      api<AccountSnapshot>(`/accounts/${id}/snapshots/${date}`, {
+      apiFetch<AccountSnapshot>(`/accounts/${id}/snapshots/${date}`, {
         method: 'PUT',
         body: JSON.stringify(data),
       }),
@@ -61,7 +61,7 @@ export function AccountDetailPage() {
   // Delete account mutation
   const deleteAccountMutation = useMutation({
     mutationFn: () =>
-      api(`/accounts/${id}`, { method: 'DELETE' }),
+      apiFetch(`/accounts/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
       showToast('Account deleted successfully', 'success');
       navigate('/accounts');
@@ -323,7 +323,7 @@ function EditAccountForm({ account, onSuccess, onCancel }: EditAccountFormProps)
   
   const updateMutation = useMutation({
     mutationFn: (data: UpdateAccountRequest) =>
-      api(`/accounts/${account.id}`, {
+      apiFetch(`/accounts/${account.id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),

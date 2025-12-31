@@ -1,26 +1,36 @@
-﻿using FinanceTracker.Contracts.NetWorth;
+﻿using FinanceTracker.Auth;
+using FinanceTracker.Contracts.NetWorth;
 using FinanceTracker.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinanceTracker.Api.Controllers;
 
 [ApiController]
+[Authorize]
 public class NetWorthController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICurrentUserContext _currentUser;
 
-    public NetWorthController(AppDbContext db) => _db = db;
+    public NetWorthController(AppDbContext db, ICurrentUserContext currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
 
     [HttpGet("/net-worth")]
     public async Task<IActionResult> Get([FromQuery] DateOnly from, [FromQuery] DateOnly to, [FromQuery] string interval = "month")
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         if (to < from) throw new ArgumentException("to must be >= from");
 
-        // Load snapshots in range with account info
+        // Load snapshots in range with account info - filter by user
         var rows = await _db.AccountSnapshots
             .AsNoTracking()
-            .Where(s => s.Date >= from && s.Date <= to)
+            .Where(s => s.UserId == userId && s.Date >= from && s.Date <= to) // Filter by user
             .Select(s => new
             {
                 s.AccountId,

@@ -75,6 +75,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       setIsLoading(false);
+      // Friendly message for unverified email
+      if (error.message.toLowerCase().includes('email not confirmed')) {
+        throw new Error('Your email isn\'t verified yet. Check your inbox and verify, then try again.');
+      }
       throw new Error(error.message);
     }
     await ensureAuthMe();
@@ -83,11 +87,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string) => {
     setIsLoading(true);
-    const { error } = await supabase.auth.signUp({ email, password });
+    const { data, error } = await supabase.auth.signUp({ email, password });
     if (error) {
       setIsLoading(false);
       throw new Error(error.message);
     }
+    
+    // Check if email verification is required (user exists but no session)
+    if (data.user && !data.session) {
+      setIsLoading(false);
+      throw new Error('VERIFICATION_REQUIRED');
+    }
+    
     await ensureAuthMe();
     setIsLoading(false);
   };
