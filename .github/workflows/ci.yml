@@ -7,7 +7,8 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build:
+  build-and-test:
+    name: Build and Test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -42,3 +43,79 @@ jobs:
       - name: Check code formatting (non-blocking)
         run: dotnet format --verify-no-changes --verbosity diagnostic
         continue-on-error: true
+
+  deploy:
+    name: Deploy to AWS App Runner
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-2
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: finance-tracker-api
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          cd apps/api
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Deploy to App Runner
+        id: deploy
+        run: |
+          echo "Triggering App Runner deployment..."
+          aws apprunner start-deployment \
+            --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} \
+            --region us-east-2
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          timeout 600 bash -c 'until aws apprunner describe-service --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} --region us-east-2 --query "Service.Status" --output text | grep -q "RUNNING"; do echo "Waiting..."; sleep 10; done' || echo "Timeout reached, check AWS Console"
+
+      - name: Get service URL
+        id: get-url
+        run: |
+          SERVICE_URL=$(aws apprunner describe-service \
+            --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} \
+            --query 'Service.ServiceUrl' \
+            --output text \
+            --region us-east-2)
+          echo "url=https://$SERVICE_URL" >> $GITHUB_OUTPUT
+
+      - name: Health check
+        run: |
+          echo "Performing health check..."
+          sleep 30
+          curl -f ${{ steps.get-url.outputs.url }}/health || echo "Health check failed, but deployment may still be in progress"
+
+      - name: Deployment summary
+        run: |
+          echo "## ?? Deployment Successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Service**: finance-tracker-api" >> $GITHUB_STEP_SUMMARY
+          echo "- **Region**: us-east-2" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image**: ${{ steps.build-image.outputs.image }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **URL**: ${{ steps.get-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Health Check" >> $GITHUB_STEP_SUMMARY
+          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY

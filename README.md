@@ -610,8 +610,27 @@ GitHub Actions workflow runs on every push and pull request:
 2. **Build** - Compile in Release configuration
 3. **Test** - Run all 96 tests with detailed output
 4. **Format Check** - Verify code formatting (non-blocking)
+5. **Deploy** - Automatic deployment to AWS App Runner (main branch only)
 
 **Build Status:** ![CI Status](https://github.com/zeyadelganainy/finance-tracker-api/workflows/CI/badge.svg)
+
+### Continuous Deployment
+
+**Automated Deployment**: Every push to `main` automatically deploys to AWS App Runner
+
+**Deployment Flow**:
+```
+Push to main → Run tests → Build Docker → Push to ECR → Deploy → Health check → Live!
+```
+
+**Setup Guide**: See [`docs/CICD_SETUP_GUIDE.md`](docs/CICD_SETUP_GUIDE.md) for complete CI/CD configuration
+
+**Requirements**:
+- AWS IAM credentials (stored as GitHub Secrets)
+- App Runner Service ARN
+- 3 GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `APP_RUNNER_SERVICE_ARN`
+
+**Deployment Time**: ~8-12 minutes from push to live
 
 ### Quality Metrics
 
