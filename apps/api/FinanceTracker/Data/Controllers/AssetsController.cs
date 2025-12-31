@@ -1,6 +1,8 @@
 ﻿using FinanceTracker.Api.Models;
+using FinanceTracker.Auth;
 using FinanceTracker.Contracts.Accounts;
 using FinanceTracker.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,14 +10,23 @@ namespace FinanceTracker.Api.Controllers;
 
 [ApiController]
 [Route("assets")]
+[Authorize]
 public class AssetsController : ControllerBase
 {
     private readonly AppDbContext _db;
-    public AssetsController(AppDbContext db) => _db = db;
+    private readonly ICurrentUserContext _currentUser;
+
+    public AssetsController(AppDbContext db, ICurrentUserContext currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
 
     [HttpPost]
     public async Task<IActionResult> Create(CreateAssetRequest req)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         // DataAnnotations handle Required, MaxLength, and Range validation
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new ArgumentException("Name cannot be only whitespace.");
@@ -31,6 +42,7 @@ public class AssetsController : ControllerBase
 
         var asset = new Asset
         {
+            UserId = userId,
             Name = req.Name.Trim(),
             AssetClass = assetClass,
             Ticker = string.IsNullOrWhiteSpace(req.Ticker) ? null : req.Ticker.Trim().ToUpperInvariant(),
@@ -64,8 +76,11 @@ public class AssetsController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> List()
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         var assets = await _db.Assets
             .AsNoTracking()
+            .Where(a => a.UserId == userId) // Filter by user
             .OrderBy(a => a.Name)
             .Select(a => new AssetResponse(
                 a.Id,
@@ -88,9 +103,12 @@ public class AssetsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         var asset = await _db.Assets
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .Where(a => a.Id == id && a.UserId == userId) // Filter by user
+            .FirstOrDefaultAsync();
 
         if (asset == null)
             return NotFound(new { error = "Asset not found" });
@@ -115,10 +133,15 @@ public class AssetsController : ControllerBase
     [HttpPatch("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, UpdateAssetRequest req)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         if (string.IsNullOrWhiteSpace(req.Name))
             throw new ArgumentException("Name cannot be only whitespace.");
 
-        var asset = await _db.Assets.FindAsync(id);
+        var asset = await _db.Assets
+            .Where(a => a.Id == id && a.UserId == userId) // Filter by user
+            .FirstOrDefaultAsync();
+
         if (asset == null)
             return NotFound(new { error = "Asset not found" });
 
@@ -163,7 +186,12 @@ public class AssetsController : ControllerBase
     [HttpDelete("{id:guid}")]
     public async Task<IActionResult> Delete(Guid id)
     {
-        var asset = await _db.Assets.FindAsync(id);
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        var asset = await _db.Assets
+            .Where(a => a.Id == id && a.UserId == userId) // Filter by user
+            .FirstOrDefaultAsync();
+
         if (asset == null)
             return NotFound(new { error = "Asset not found" });
 

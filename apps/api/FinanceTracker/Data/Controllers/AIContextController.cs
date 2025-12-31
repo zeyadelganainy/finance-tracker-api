@@ -1,5 +1,7 @@
+using FinanceTracker.Auth;
 using FinanceTracker.Contracts.AI;
 using FinanceTracker.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +12,17 @@ namespace FinanceTracker.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("ai")]
+[Authorize]
 public class AIContextController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICurrentUserContext _currentUser;
 
-    public AIContextController(AppDbContext db) => _db = db;
+    public AIContextController(AppDbContext db, ICurrentUserContext currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
 
     /// <summary>
     /// Returns comprehensive financial context for AI analysis
@@ -23,9 +31,12 @@ public class AIContextController : ControllerBase
     [HttpGet("context")]
     public async Task<IActionResult> GetContext()
     {
-        // Get accounts with latest balances
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Get accounts with latest balances (filtered by user)
         var accounts = await _db.Accounts
             .AsNoTracking()
+            .Where(a => a.UserId == userId)
             .Include(a => a.Snapshots)
             .OrderBy(a => a.Name)
             .ToListAsync();
@@ -59,9 +70,10 @@ public class AIContextController : ControllerBase
             accountsData
         );
 
-        // Get assets
+        // Get assets (filtered by user)
         var assets = await _db.Assets
             .AsNoTracking()
+            .Where(a => a.UserId == userId)
             .OrderBy(a => a.Name)
             .ToListAsync();
 
@@ -82,9 +94,10 @@ public class AIContextController : ControllerBase
             assetsData
         );
 
-        // Get transactions summary
+        // Get transactions summary (filtered by user)
         var transactions = await _db.Transactions
             .AsNoTracking()
+            .Where(t => t.UserId == userId)
             .Include(t => t.Category)
             .OrderBy(t => t.Date)
             .ToListAsync();
@@ -112,9 +125,10 @@ public class AIContextController : ControllerBase
             categoryBreakdown
         );
 
-        // Get categories
+        // Get categories (filtered by user)
         var categories = await _db.Categories
             .AsNoTracking()
+            .Where(c => c.UserId == userId)
             .OrderBy(c => c.Name)
             .Select(c => c.Name)
             .ToListAsync();

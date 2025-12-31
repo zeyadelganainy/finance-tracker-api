@@ -1,5 +1,7 @@
+using FinanceTracker.Auth;
 using FinanceTracker.Contracts.Valuation;
 using FinanceTracker.Data;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -10,11 +12,17 @@ namespace FinanceTracker.Api.Controllers;
 /// </summary>
 [ApiController]
 [Route("assets")]
+[Authorize]
 public class ValuationController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICurrentUserContext _currentUser;
 
-    public ValuationController(AppDbContext db) => _db = db;
+    public ValuationController(AppDbContext db, ICurrentUserContext currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
 
     /// <summary>
     /// Returns valuation data for all assets
@@ -24,8 +32,11 @@ public class ValuationController : ControllerBase
     [HttpGet("valuation")]
     public async Task<IActionResult> GetValuation()
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         var assets = await _db.Assets
             .AsNoTracking()
+            .Where(a => a.UserId == userId) // Filter by user
             .OrderBy(a => a.Name)
             .ToListAsync();
 
@@ -59,9 +70,12 @@ public class ValuationController : ControllerBase
     [HttpGet("{id:guid}/valuation")]
     public async Task<IActionResult> GetAssetValuation(Guid id)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         var asset = await _db.Assets
             .AsNoTracking()
-            .FirstOrDefaultAsync(a => a.Id == id);
+            .Where(a => a.Id == id && a.UserId == userId) // Filter by user
+            .FirstOrDefaultAsync();
 
         if (asset == null)
             return NotFound(new { error = "Asset not found" });

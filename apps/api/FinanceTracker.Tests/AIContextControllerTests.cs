@@ -258,6 +258,7 @@ public class AIContextControllerTests : IClassFixture<CustomWebApplicationFactor
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var transaction = new Transaction
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Amount = amount,
             Date = date,
             CategoryId = categoryId,

@@ -1,7 +1,9 @@
+using FinanceTracker.Auth;
 using FinanceTracker.Contracts.Common;
 using FinanceTracker.Contracts.Transactions;
 using FinanceTracker.Data;
 using FinanceTracker.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,26 +11,38 @@ namespace FinanceTracker.Controllers;
 
 [ApiController]
 [Route("transactions")]
+[Authorize]
 public class TransactionsController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly ICurrentUserContext _currentUser;
 
-    public TransactionsController(AppDbContext db) => _db = db;
+    public TransactionsController(AppDbContext db, ICurrentUserContext currentUser)
+    {
+        _db = db;
+        _currentUser = currentUser;
+    }
 
     // POST /transactions
     [HttpPost]
     public async Task<ActionResult<TransactionResponse>> Create(CreateTransactionRequest req)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         // DataAnnotations handle Required and Range validation
         // Keep business logic validation
         if (req.Amount == 0)
             throw new ArgumentException("Amount cannot be 0.");
 
-        var categoryExists = await _db.Categories.AnyAsync(c => c.Id == req.CategoryId);
-        if (!categoryExists) throw new ArgumentException("CategoryId is invalid.");
+        // Verify category belongs to current user
+        var categoryExists = await _db.Categories
+            .AnyAsync(c => c.Id == req.CategoryId && c.UserId == userId);
+        if (!categoryExists) 
+            throw new ArgumentException("CategoryId is invalid or does not belong to you.");
 
         var tx = new Transaction
         {
+            UserId = userId,
             Amount = req.Amount,
             Date = req.Date,
             CategoryId = req.CategoryId,
@@ -62,11 +76,15 @@ public class TransactionsController : ControllerBase
         [FromQuery] DateOnly? to,
         [FromQuery] PagingQuery paging)
     {
+        var userId = Guid.Parse(_currentUser.UserId);
+
         // Cap page size to 200
         var pageSize = Math.Min(paging.PageSize, 200);
         var page = Math.Max(paging.Page, 1);
 
-        var q = _db.Transactions.AsNoTracking().AsQueryable();
+        var q = _db.Transactions
+            .AsNoTracking()
+            .Where(t => t.UserId == userId); // Filter by user
 
         // Apply date filters
         if (from is not null) q = q.Where(t => t.Date >= from.Value);

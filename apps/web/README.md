@@ -13,6 +13,7 @@ A clean, minimal React frontend for the Finance Tracker API.
 
 - Node.js 18+ installed
 - Finance Tracker API running at: https://ugwm6qnmpp.us-east-2.awsapprunner.com
+- Supabase project (URL + anon key)
 
 ## Setup
 
@@ -34,6 +35,10 @@ Update `.env` with your API URL:
 
 ```
 VITE_API_BASE_URL=https://ugwm6qnmpp.us-east-2.awsapprunner.com
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_DEMO_EMAIL=demo@example.com
+VITE_DEMO_PASSWORD=demo-password
 ```
 
 **?? Important**: After changing `.env`, restart the dev server!
