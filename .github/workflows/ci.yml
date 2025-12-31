@@ -47,6 +47,8 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    env:
+      AWS_REGION: us-east-2
     
     steps:
       - name: Checkout code
