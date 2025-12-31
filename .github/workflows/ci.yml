@@ -47,8 +47,6 @@ jobs:
     needs: build-and-test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    env:
-      AWS_REGION: us-east-2
     
     steps:
       - name: Checkout code
@@ -64,6 +62,8 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+        with:
+          mask-password: 'true'
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -71,6 +71,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: finance-tracker-api
           IMAGE_TAG: ${{ github.sha }}
+          AWS_DEFAULT_REGION: us-east-2
         run: |
           cd apps/api
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
@@ -81,6 +82,8 @@ jobs:
 
       - name: Deploy to App Runner
         id: deploy
+        env:
+          AWS_DEFAULT_REGION: us-east-2
         run: |
           echo "Triggering App Runner deployment..."
           aws apprunner start-deployment \
@@ -88,12 +91,16 @@ jobs:
             --region us-east-2
 
       - name: Wait for deployment
+        env:
+          AWS_DEFAULT_REGION: us-east-2
         run: |
           echo "Waiting for deployment to complete..."
           timeout 600 bash -c 'until aws apprunner describe-service --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} --region us-east-2 --query "Service.Status" --output text | grep -q "RUNNING"; do echo "Waiting..."; sleep 10; done' || echo "Timeout reached, check AWS Console"
 
       - name: Get service URL
         id: get-url
+        env:
+          AWS_DEFAULT_REGION: us-east-2
         run: |
           SERVICE_URL=$(aws apprunner describe-service \
             --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} \
