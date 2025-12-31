@@ -20,8 +20,36 @@ public class NetWorthController : ControllerBase
         _currentUser = currentUser;
     }
 
+    // Legacy endpoint for backwards compatibility
     [HttpGet("/net-worth")]
     public async Task<IActionResult> Get([FromQuery] DateOnly from, [FromQuery] DateOnly to, [FromQuery] string interval = "month")
+    {
+        var points = await GetNetWorthPoints(from, to, interval);
+        return Ok(points);
+    }
+
+    // New endpoint with proper response envelope (matches frontend expectations)
+    [HttpGet("/networth/history")]
+    public async Task<IActionResult> GetHistory([FromQuery] DateOnly from, [FromQuery] DateOnly to, [FromQuery] string interval = "daily")
+    {
+        var points = await GetNetWorthPoints(from, to, interval);
+        
+        var response = new NetWorthHistoryResponse(
+            from.ToString("yyyy-MM-dd"),
+            to.ToString("yyyy-MM-dd"),
+            interval.ToLowerInvariant() switch
+            {
+                "day" or "daily" => "daily",
+                "week" or "weekly" => "weekly",
+                _ => "monthly"
+            },
+            points
+        );
+        
+        return Ok(response);
+    }
+
+    private async Task<List<NetWorthPoint>> GetNetWorthPoints(DateOnly from, DateOnly to, string interval)
     {
         var userId = Guid.Parse(_currentUser.UserId);
 
@@ -43,9 +71,9 @@ public class NetWorthController : ControllerBase
         DateOnly BucketStart(DateOnly d)
         {
             interval = interval.ToLowerInvariant();
-            if (interval == "day") return d;
+            if (interval == "day" || interval == "daily") return d;
 
-            if (interval == "week")
+            if (interval == "week" || interval == "weekly")
             {
                 // ISO-ish: bucket by Monday
                 var dow = (int)d.DayOfWeek; // Sunday=0
@@ -53,7 +81,7 @@ public class NetWorthController : ControllerBase
                 return d.AddDays(-mondayOffset);
             }
 
-            // month default
+            // month/monthly default
             return new DateOnly(d.Year, d.Month, 1);
         }
 
@@ -72,6 +100,6 @@ public class NetWorthController : ControllerBase
             .OrderBy(x => x.Date)
             .ToList();
 
-        return Ok(points);
+        return points;
     }
 }

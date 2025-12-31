@@ -7,6 +7,8 @@ import { apiFetch } from '../lib/apiClient';
 interface AuthContextValue {
   user: User | null;
   session: Session | null;
+  userId: string | null;
+  accessToken: string | null;
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
@@ -131,6 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthContextValue>(() => ({
     user,
     session,
+    userId: user?.id ?? null,
+    accessToken: session?.access_token ?? null,
     isLoading,
     signIn,
     signUp,

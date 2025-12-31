@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { format, subMonths } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 import { apiFetch } from '../lib/apiClient';
@@ -10,32 +9,82 @@ import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { useAIContext } from '../hooks/useAI';
+import { useAuth } from '../auth/AuthProvider';
+import { EmptyState } from '../components/ui/EmptyState';
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export function DashboardPage() {
+  const { user, accessToken, isLoading: authLoading } = useAuth();
   const currentMonth = format(new Date(), 'yyyy-MM');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [showAIContext, setShowAIContext] = useState(false);
+  const [netWorthData, setNetWorthData] = useState<NetWorthHistoryResponse | null>(null);
+  const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [lastFetchAt, setLastFetchAt] = useState<number | null>(null);
   
   // Generate last 6 months for net worth chart
   const sixMonthsAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
   const today = format(new Date(), 'yyyy-MM-dd');
   
-  // Fetch AI context (used for generating insights later)
-  const { data: aiContext, isLoading: loadingAI } = useAIContext();
-  
-  // Fetch net worth history
-  const { data: netWorthData, isLoading: loadingNetWorth } = useQuery({
-    queryKey: ['networth', sixMonthsAgo, today],
-    queryFn: () => apiFetch<NetWorthHistoryResponse>(`/networth/history?from=${sixMonthsAgo}&to=${today}`),
-  });
-  
-  // Fetch monthly summary
-  const { data: monthlySummary, isLoading: loadingSummary } = useQuery({
-    queryKey: ['summary', selectedMonth],
-    queryFn: () => apiFetch<MonthlySummary>(`/summary/monthly?month=${selectedMonth}`),
-  });
+  // Fetch AI context (used for generating insights later) only when authenticated
+  const { data: aiContext, isLoading: loadingAI } = useAIContext(!!user);
+
+  // Fetch dashboard data and reset on auth/user change
+  useEffect(() => {
+    // Reset state when user changes or auth is still loading
+    setNetWorthData(null);
+    setMonthlySummary(null);
+    setError(null);
+    setLoading(true);
+
+    if (authLoading) {
+      return;
+    }
+
+    if (!user || !accessToken) {
+      setLoading(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    const fetchDashboard = async () => {
+      try {
+        const [networth, summary] = await Promise.all([
+          apiFetch<NetWorthHistoryResponse>(`/networth/history?from=${sixMonthsAgo}&to=${today}`, { signal: controller.signal }),
+          apiFetch<MonthlySummary>(`/summary/monthly?month=${selectedMonth}`, { signal: controller.signal }),
+        ]);
+
+        setNetWorthData(networth);
+        setMonthlySummary(summary);
+        setLastFetchAt(Date.now());
+        setError(null);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        const message = err instanceof Error ? err.message : 'Failed to load dashboard';
+        // If backend returns 404 for empty datasets, treat as empty state
+        if (message.startsWith('404')) {
+          setNetWorthData({ from: sixMonthsAgo, to: today, interval: 'daily', dataPoints: [] });
+          setMonthlySummary({ month: selectedMonth, totalIncome: 0, totalExpenses: 0, net: 0, expenseBreakdown: [] });
+          setLastFetchAt(Date.now());
+          setError(null);
+        } else {
+          setError(message);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    fetchDashboard();
+
+    return () => controller.abort();
+  }, [user?.id, accessToken, selectedMonth, authLoading, sixMonthsAgo, today]);
   
   // Generate month options (last 12 months)
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
@@ -46,24 +95,35 @@ export function DashboardPage() {
   });
   
   // Prepare chart data
-  const netWorthChartData = netWorthData?.dataPoints.map((point: NetWorthDataPoint) => ({
+  const netWorthPoints = netWorthData?.dataPoints ?? [];
+
+  const netWorthChartData = netWorthPoints.map((point: NetWorthDataPoint) => ({
     date: format(new Date(point.date), 'MMM dd'),
     netWorth: point.netWorth,
-  })) || [];
+  }));
   
-  const expenseChartData = monthlySummary?.expenseBreakdown
+  const expenseChartData = (monthlySummary?.expenseBreakdown || [])
     .filter(item => Math.abs(item.total) > 0)
     .map(item => ({
       name: item.categoryName,
       value: Math.abs(item.total),
-    })) || [];
+    }));
   
-  const latestNetWorth = netWorthData?.dataPoints[netWorthData.dataPoints.length - 1]?.netWorth || 0;
-  const previousNetWorth = netWorthData?.dataPoints[netWorthData.dataPoints.length - 2]?.netWorth || 0;
+  const latestNetWorth = netWorthPoints.length > 0 ? netWorthPoints[netWorthPoints.length - 1].netWorth : 0;
+  const previousNetWorth = netWorthPoints.length > 1 ? netWorthPoints[netWorthPoints.length - 2].netWorth : 0;
   const netWorthChange = latestNetWorth - previousNetWorth;
   const netWorthChangePercent = previousNetWorth !== 0 
     ? ((netWorthChange / Math.abs(previousNetWorth)) * 100).toFixed(1)
     : '0.0';
+
+  const hasSummaryData = !!monthlySummary && (
+    monthlySummary.totalIncome !== 0 ||
+    monthlySummary.totalExpenses !== 0 ||
+    monthlySummary.net !== 0 ||
+    (monthlySummary.expenseBreakdown?.length ?? 0) > 0
+  );
+
+  const hasData = netWorthPoints.length > 0 || hasSummaryData;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -83,7 +143,7 @@ export function DashboardPage() {
           </div>
         </div>
         
-        {loadingNetWorth || loadingSummary ? (
+        {loading ? (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
               {Array.from({ length: 4 }).map((_, i) => (
@@ -97,6 +157,21 @@ export function DashboardPage() {
           </>
         ) : (
           <>
+            {error && (
+              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
+                {error}
+              </div>
+            )}
+
+            {!error && !hasData && (
+              <Card className="mb-8">
+                <EmptyState
+                  title="No data yet"
+                  description="No transactions found. Add your first transaction to see your dashboard populate."
+                />
+              </Card>
+            )}
+
             {/* Stats Cards with improved styling */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
               <StatCard
@@ -358,6 +433,16 @@ export function DashboardPage() {
               )}
             </Card>
           </>
+        )}
+
+        {import.meta.env.DEV && (
+          <div className="mt-6 text-xs text-gray-700 bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-1">
+            <div><span className="font-semibold">Debug:</span> Dashboard fetch diagnostics</div>
+            <div>User ID: {user?.id ?? 'none'}</div>
+            <div>Token present: {accessToken ? 'yes' : 'no'}</div>
+            <div>Last fetch: {lastFetchAt ? new Date(lastFetchAt).toLocaleString() : 'n/a'}</div>
+            <div>Transactions (from AI summary): {aiContext?.transactions.totalCount ?? 'n/a'}</div>
+          </div>
         )}
       </div>
     </div>

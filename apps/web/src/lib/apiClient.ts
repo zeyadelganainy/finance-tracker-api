@@ -10,18 +10,25 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
 
-  const headers = new Headers(options.headers || undefined);
-  if (token) {
-    headers.set('Authorization', `Bearer ${token}`);
+  if (!token) {
+    throw new Error('No authentication token available');
   }
+
+  const headers = new Headers(options.headers || undefined);
+  headers.set('Authorization', `Bearer ${token}`);
+  
   if (options.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json');
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  // Prevent caching - always fetch fresh data from server
+  const fetchOptions: RequestInit = {
     ...options,
     headers,
-  });
+    cache: 'no-store',
+  };
+
+  const response = await fetch(`${API_BASE_URL}${path}`, fetchOptions);
 
   if (response.status === 401) {
     await supabase.auth.signOut();
@@ -32,8 +39,9 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `Request failed with status ${response.status}`);
+    const bodyText = await response.text();
+    const message = bodyText || response.statusText || 'Request failed';
+    throw new Error(`${response.status}: ${message}`);
   }
 
   if (response.status === 204) {
