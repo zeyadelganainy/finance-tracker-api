@@ -358,6 +358,7 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var account = new Account
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Name = name,
             Institution = institution,
             Type = type,
@@ -375,6 +376,7 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var snapshot = new AccountSnapshot
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             AccountId = accountId,
             Date = date,
             Balance = balance
@@ -386,3 +388,4 @@ public class AccountsControllerTests : IClassFixture<CustomWebApplicationFactory
     private record AccountDto(Guid Id, string Name, string? Institution, string? Type, string Currency, bool IsLiability, DateTime CreatedAt, DateTime UpdatedAt);
     private record AccountDetailDto(Guid Id, string Name, string? Institution, string? Type, string Currency, bool IsLiability, DateTime CreatedAt, DateTime UpdatedAt, decimal? LatestBalance, DateOnly? LatestBalanceDate, int SnapshotCount);
 }
+

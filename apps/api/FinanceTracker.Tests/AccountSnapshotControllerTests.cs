@@ -217,6 +217,7 @@ public class AccountSnapshotControllerTests : IClassFixture<CustomWebApplication
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var account = new Account
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Name = name,
             Type = type,
             IsLiability = isLiability
@@ -232,6 +233,7 @@ public class AccountSnapshotControllerTests : IClassFixture<CustomWebApplication
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var snapshot = new AccountSnapshot
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             AccountId = accountId,
             Date = date,
             Balance = balance
@@ -243,3 +245,4 @@ public class AccountSnapshotControllerTests : IClassFixture<CustomWebApplication
 
     private record SnapshotDto(Guid Id, Guid AccountId, string Date, decimal Balance);
 }
+

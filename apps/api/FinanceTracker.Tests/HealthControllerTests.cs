@@ -61,3 +61,4 @@ public class HealthControllerTests : IClassFixture<CustomWebApplicationFactory>
 
     private record HealthResponse(string status);
 }
+

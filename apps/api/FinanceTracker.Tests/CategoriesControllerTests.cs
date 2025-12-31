@@ -155,7 +155,7 @@ public class CategoriesControllerTests : IClassFixture<CustomWebApplicationFacto
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         foreach (var name in names)
         {
-            db.Categories.Add(new Category { Name = name });
+            db.Categories.Add(new Category { UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId), Name = name });
         }
         await db.SaveChangesAsync();
     }

@@ -139,7 +139,7 @@ public class SummaryControllerTests : IClassFixture<CustomWebApplicationFactory>
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var category = new Category { Name = name };
+        var category = new Category { UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId), Name = name };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
         return category.Id;
@@ -151,6 +151,7 @@ public class SummaryControllerTests : IClassFixture<CustomWebApplicationFactory>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         db.Transactions.Add(new Transaction
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Amount = amount,
             Date = date,
             CategoryId = categoryId,

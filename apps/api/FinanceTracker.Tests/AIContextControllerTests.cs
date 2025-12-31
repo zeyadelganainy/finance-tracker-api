@@ -196,6 +196,7 @@ public class AIContextControllerTests : IClassFixture<CustomWebApplicationFactor
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var account = new Account
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Name = name,
             Institution = institution,
             Type = type,
@@ -213,6 +214,7 @@ public class AIContextControllerTests : IClassFixture<CustomWebApplicationFactor
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var snapshot = new AccountSnapshot
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             AccountId = accountId,
             Date = date,
             Balance = balance
@@ -227,6 +229,7 @@ public class AIContextControllerTests : IClassFixture<CustomWebApplicationFactor
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var asset = new Asset
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Name = name,
             AssetClass = assetClass,
             Ticker = ticker,
@@ -243,7 +246,7 @@ public class AIContextControllerTests : IClassFixture<CustomWebApplicationFactor
     {
         using var scope = _factory.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var category = new Category { Name = name };
+        var category = new Category { UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId), Name = name };
         db.Categories.Add(category);
         await db.SaveChangesAsync();
         return category.Id;
@@ -324,3 +327,4 @@ public class AIContextControllerTests : IClassFixture<CustomWebApplicationFactor
         List<string> CategoryNames
     );
 }
+

@@ -180,6 +180,7 @@ public class ValuationControllerTests : IClassFixture<CustomWebApplicationFactor
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var asset = new Asset
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Name = name,
             AssetClass = assetClass,
             Ticker = ticker,
@@ -212,3 +213,4 @@ public class ValuationControllerTests : IClassFixture<CustomWebApplicationFactor
         string ValuationStatus
     );
 }
+

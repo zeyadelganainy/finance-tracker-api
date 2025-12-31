@@ -374,6 +374,7 @@ public class NetWorthControllerTests : IClassFixture<CustomWebApplicationFactory
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var account = new Account
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             Name = name,
             Type = type,
             IsLiability = isLiability
@@ -389,6 +390,7 @@ public class NetWorthControllerTests : IClassFixture<CustomWebApplicationFactory
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var snapshot = new AccountSnapshot
         {
+            UserId = Guid.Parse(CustomWebApplicationFactory.TestUserId),
             AccountId = accountId,
             Date = date,
             Balance = balance
@@ -399,3 +401,4 @@ public class NetWorthControllerTests : IClassFixture<CustomWebApplicationFactory
 
     private record NetWorthPointDto(string Date, decimal NetWorth);
 }
+
