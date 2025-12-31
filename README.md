@@ -1,702 +1,199 @@
-# Finance Tracker
+# WealthWise
 
-![CI Status](https://github.com/zeyadelganainy/finance-tracker-api/workflows/CI/badge.svg)
-[![.NET 9](https://img.shields.io/badge/.NET-9.0-512BD4)](https://dotnet.microsoft.com/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://www.postgresql.org/)
+A personal finance tracking system with a React frontend and .NET API backend. Track transactions, manage accounts and assets, and monitor net worth over time.
 
-A monorepo for personal finance tracking. Contains a REST API backend and web frontend.
+## Live System
 
----
+**Frontend**: https://wealthwise-sable.vercel.app  
+**API**: https://ugwm6qnmpp.us-east-2.awsapprunner.com  
 
-## 🚀 Live Demo
+## Architecture
 
-**Production API**: [https://ugwm6qnmpp.us-east-2.awsapprunner.com](https://ugwm6qnmpp.us-east-2.awsapprunner.com)
+**Frontend**:
+- React 18 + TypeScript
+- Vite for development and bundling
+- TailwindCSS for styling
+- Deployed on Vercel
 
-**Try it now**:
-- Health Check: [/health](https://ugwm6qnmpp.us-east-2.awsapprunner.com/health)
-- Database Status: [/health/ready](https://ugwm6qnmpp.us-east-2.awsapprunner.com/health/ready)
-- Categories: [/categories](https://ugwm6qnmpp.us-east-2.awsapprunner.com/categories)
-- Transactions: [/transactions](https://ugwm6qnmpp.us-east-2.awsapprunner.com/transactions)
+**Backend**:
+- .NET 9 REST API
+- Entity Framework Core 9 with PostgreSQL
+- JWT authentication via Supabase Auth
+- Deployed on AWS App Runner (us-east-2)
 
-**Deployment**:
-- Platform: AWS App Runner
-- Region: us-east-2 (Ohio)
-- Auto-scaling: 1-3 instances
-- HTTPS: Automatic SSL/TLS
+**Database**:
+- PostgreSQL 16 (hosted on Supabase)
+- Row-level security policies for multi-user data isolation
 
----
+**Authentication**:
+- Supabase Auth (JWT Bearer tokens, RS256)
+- JWKS-based token validation (no shared secrets)
+- User-scoped data access
+
+## Demo Mode
+
+The system includes a "Continue as Demo" option that logs into a pre-seeded demo account. This account contains sample transactions, categories, accounts, and assets for demonstration purposes.
+
+New users start with empty data and can add their own transactions and accounts.
 
 ## Repository Structure
 
 ```
 finance-tracker/
-├── apps/
-│   ├── api/              # .NET 9 REST API
-│   │   ├── FinanceTracker/
-│   │   └── FinanceTracker.Tests/
-│   └── web/              # Frontend (coming soon)
-├── .github/
-│   └── workflows/        # CI/CD pipelines
-└── docs/                 # Documentation
+??? apps/
+?   ??? api/              # .NET 9 REST API
+?   ?   ??? FinanceTracker/
+?   ?   ??? FinanceTracker.Tests/
+?   ??? web/              # React + Vite frontend
+??? supabase/             # Database migration scripts and RLS policies
+??? .github/workflows/    # CI/CD pipelines
+??? API.md                # API documentation
 ```
 
----
-
-## API
-
-A REST API for tracking personal finances. Handles transactions, categories, assets, and net worth calculation over time. Built to demonstrate clean API design, testing discipline, and production infrastructure.
-
-### Key Features
-
-- **Transaction Management** - Create, list, and delete income/expense transactions with date filtering and pagination
-- **Category Organization** - Unique categories with duplicate prevention enforced at the database level
-- **Account & Asset Tracking** - Multiple account types (bank, investment, credit) with asset class and ticker support
-- **Historical Balance Snapshots** - Upsert-based balance tracking by date with unique constraints
-- **Net Worth Calculation** - Time-series net worth queries with configurable intervals (daily, weekly, monthly)
-- **Monthly Summaries** - Aggregated income, expense, and category breakdown
-- **Structured Validation** - Input validation with error responses including TraceId for debugging
-- **Health Monitoring** - Liveness and readiness probes with database connectivity checks
-- **CI/CD Integration** - Automated testing and build verification via GitHub Actions
-- **96 Integration Tests** - Endpoint coverage including validation and error scenarios
-
-### Tech Stack
-
-- **.NET 9** - Web API framework
-- **ASP.NET Core** - HTTP pipeline and routing
-- **Entity Framework Core 9** - ORM with migrations
-- **PostgreSQL 16** - Relational database (hosted on Supabase)
-- **xUnit** - Testing framework with 96 integration tests
-- **GitHub Actions** - CI pipeline with NuGet caching
-- **OpenAPI** - API specification (development environment only)
-
-### Architecture Overview
-
-API-first backend designed for frontend integration or direct consumption.
-
-**Design Principles:**
-- DTOs are used to prevent EF Core entities from leaking into the API surface
-- Global middleware handles exceptions, request logging, and CORS
-- Repository pattern is abstracted through EF Core DbContext
-- Database indexes optimize common queries (transactions by date, category)
-- Explicit foreign key behaviors prevent accidental data loss
-
-**Request Pipeline:**
-1. CORS policy enforcement
-2. Request logging middleware (method, path, status, duration, traceId)
-3. Exception handling middleware (structured error responses)
-4. Controller routing and action execution
-5. EF Core with optimized queries and change tracking
-
-**Testing Strategy:**
-- Integration tests use in-memory database
-- Tests verify controller-level behavior
-- Validation rules are covered
-- Error handling scenarios are tested
-- Health endpoints are monitored
-
----
-
-## API Documentation
-
-### Categories
-
-Organize transactions into unique, case-insensitive categories.
-
-#### `GET /categories`
-List all categories ordered by name.
-
-**Response:**
-```json
-[
-  { "id": 1, "name": "Groceries" },
-  { "id": 2, "name": "Transportation" }
-]
-```
-
-#### `POST /categories`
-Create a new category. Duplicate names are rejected.
-
-**Request:**
-```json
-{
-  "name": "Entertainment"
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "id": 3,
-  "name": "Entertainment"
-}
-```
-
----
-
-### Transactions
-
-Track income (positive amounts) and expenses (negative amounts).
-
-#### `GET /transactions?page=1&pageSize=20&from=2025-01-01&to=2025-01-31`
-List transactions with pagination and date filtering.
-
-**Query Parameters:**
-- `page` (optional) - Page number, default: 1
-- `pageSize` (optional) - Items per page, default: 20
-- `from` (optional) - Start date (YYYY-MM-DD)
-- `to` (optional) - End date (YYYY-MM-DD)
-
-**Response:**
-```json
-{
-  "items": [
-    {
-      "id": 101,
-      "amount": -45.50,
-      "date": "2025-01-15",
-      "description": "Grocery shopping",
-      "category": {
-        "id": 1,
-        "name": "Groceries"
-      }
-    },
-    {
-      "id": 102,
-      "amount": 3000.00,
-      "date": "2025-01-01",
-      "description": "Salary",
-      "category": {
-        "id": 5,
-        "name": "Income"
-      }
-    }
-  ],
-  "page": 1,
-  "pageSize": 20,
-  "totalCount": 47,
-  "totalPages": 3
-}
-```
-
-#### `POST /transactions`
-Create a new transaction.
-
-**Request:**
-```json
-{
-  "amount": -89.99,
-  "date": "2025-01-20",
-  "categoryId": 1,
-  "description": "Weekly groceries"
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "id": 103,
-  "amount": -89.99,
-  "date": "2025-01-20",
-  "description": "Weekly groceries",
-  "category": {
-    "id": 1,
-    "name": "Groceries"
-  }
-}
-```
-
-#### `DELETE /transactions/{id}`
-Delete a transaction by ID.
-
-**Response:** `204 No Content`
-
----
-
-### Accounts
-
-Manage bank accounts, investments, and liabilities.
-
-#### `GET /accounts`
-List all accounts ordered by name.
-
-**Response:**
-```json
-[
-  {
-    "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-    "name": "Chase Checking",
-    "type": "bank",
-    "isLiability": false
-  },
-  {
-    "id": "f9e8d7c6-b5a4-3210-fedc-ba0987654321",
-    "name": "Visa Credit Card",
-    "type": "credit",
-    "isLiability": true
-  }
-]
-```
-
-#### `POST /accounts`
-Create a new account.
-
-**Request:**
-```json
-{
-  "name": "Savings Account",
-  "type": "bank",
-  "isLiability": false
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "id": "new-guid-here",
-  "name": "Savings Account",
-  "type": "bank",
-  "isLiability": false
-}
-```
-
----
-
-### Assets
-
-Track investment assets with asset classes and ticker symbols.
-
-#### `GET /assets`
-List all asset accounts ordered by name.
-
-**Response:**
-```json
-[
-  {
-    "id": "guid-1",
-    "name": "Apple Stock",
-    "assetClass": "stock",
-    "ticker": "AAPL"
-  },
-  {
-    "id": "guid-2",
-    "name": "Bitcoin",
-    "assetClass": "crypto",
-    "ticker": "BTC"
-  }
-]
-```
-
-#### `POST /assets`
-Create a new asset with optional asset class and ticker.
-
-**Request:**
-```json
-{
-  "name": "Vanguard S&P 500",
-  "assetClass": "stock",
-  "ticker": "VOO"
-}
-```
-
-**Response:** `201 Created`
-```json
-{
-  "id": "guid-3",
-  "name": "Vanguard S&P 500",
-  "assetClass": "stock",
-  "ticker": "VOO"
-}
-```
-
----
-
-### Account Snapshots
-
-Track historical account balances with upsert-by-date semantics.
-
-#### `PUT /accounts/{accountId}/snapshots/{date}`
-Create or update a balance snapshot for a specific date (YYYY-MM-DD).
-
-**Request:**
-```json
-{
-  "balance": 5432.10
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "id": "snapshot-guid",
-  "accountId": "account-guid",
-  "date": "2025-01-15",
-  "balance": 5432.10
-}
-```
-
-**Behavior:**
-- If snapshot exists for this account+date, balance is updated
-- If snapshot doesn't exist, new one is created
-- Unique constraint enforced on (accountId, date)
-
----
-
-### Net Worth
-
-Calculate net worth over time across all accounts.
-
-#### `GET /networth/history?from=2025-01-01&to=2025-01-31&interval=daily`
-Get net worth time-series data.
-
-**Query Parameters:**
-- `from` (required) - Start date (YYYY-MM-DD)
-- `to` (required) - End date (YYYY-MM-DD)
-- `interval` (optional) - Grouping: `daily`, `weekly`, `monthly` (default: `daily`)
-
-**Response:**
-```json
-{
-  "from": "2025-01-01",
-  "to": "2025-01-31",
-  "interval": "daily",
-  "dataPoints": [
-    {
-      "date": "2025-01-01",
-      "netWorth": 25430.50
-    },
-    {
-      "date": "2025-01-02",
-      "netWorth": 25680.75
-    },
-    {
-      "date": "2025-01-03",
-      "netWorth": 25550.20
-    }
-  ]
-}
-```
-
-**Calculation:**
-- Net worth is calculated from account snapshots grouped by interval
-- Assets minus liabilities
-- Missing dates are excluded from response
-
----
-
-### Monthly Summary
-
-#### `GET /summary/monthly?month=2025-01`
-Get aggregated summary for a specific month (YYYY-MM).
-
-**Response:**
-```json
-{
-  "month": "2025-01",
-  "totalIncome": 3500.00,
-  "totalExpenses": -1250.75,
-  "net": 2249.25,
-  "expenseBreakdown": [
-    {
-      "categoryId": 1,
-      "categoryName": "Groceries",
-      "total": -450.50
-    },
-    {
-      "categoryId": 2,
-      "categoryName": "Transportation",
-      "total": -320.25
-    },
-    {
-      "categoryId": 3,
-      "categoryName": "Entertainment",
-      "total": -480.00
-    }
-  ]
-}
-```
-
-**Calculation:**
-- Income is sum of positive transaction amounts
-- Expenses is sum of negative transaction amounts
-- Breakdown groups expenses by category, ordered by total (most negative first)
-
----
-
-## Error Handling
-
-All errors return a consistent JSON structure with HTTP status codes and TraceId for debugging.
-
-**Error Response Format:**
-```json
-{
-  "error": "Category already exists.",
-  "traceId": "0HNI6M9P660RI"
-}
-```
-
-**HTTP Status Codes:**
-- `400 Bad Request` - Validation errors (missing required fields, invalid formats)
-- `404 Not Found` - Resource not found (account, transaction, category)
-- `409 Conflict` - Business rule violations (duplicate category name, transaction references deleted category)
-- `500 Internal Server Error` - Unexpected server errors
-
-**Example Validation Error:**
-```json
-{
-  "error": "The Name field is required.",
-  "traceId": "0HNI6MAC01ADF"
-}
-```
-
-**Example Conflict Error:**
-```json
-{
-  "error": "Category already exists.",
-  "traceId": "0HNI6MAC01ADF"
-}
-```
-
-TraceId correlates errors with request logs for debugging.
-
----
-
-## Health & Observability
-
-### Health Endpoints
-
-#### `GET /health`
-Liveness probe. Checks if the service is running.
-
-**Response:** `200 OK`
-```json
-{
-  "status": "ok"
-}
-```
-
-Used for Kubernetes liveness probes and load balancer health checks.
-
-#### `GET /health/ready`
-Readiness probe. Checks if the service can handle traffic (includes database connectivity).
-
-**Response:** `200 OK` (ready)
-```json
-{
-  "status": "ready"
-}
-```
-
-**Response:** `503 Service Unavailable` (not ready)
-```json
-{
-  "status": "not_ready"
-}
-```
-
-Used for Kubernetes readiness probes and deployment verification.
-
----
-
-### Request Logging
-
-Every HTTP request is logged with:
-- HTTP method (GET, POST, etc.)
-- Request path
-- Status code
-- Duration in milliseconds
-- Unique TraceId
-
-**Example log entry:**
-```
-[2025-01-20 14:32:15] info: FinanceTracker.Middleware.RequestLoggingMiddleware[0]
-      HTTP GET /transactions => 200 in 45ms TraceId=0HNI6M9P660RI
-```
-
-Logs are used for:
-- Performance monitoring (identify slow endpoints)
-- Error correlation (match TraceId from error responses)
-- Traffic analysis (requests per second, popular endpoints)
-
----
-
-## Running Locally
+## Local Development
 
 ### Prerequisites
-- [.NET 9 SDK](https://dotnet.microsoft.com/download/dotnet/9.0)
-- [PostgreSQL 16+](https://www.postgresql.org/download/)
 
-### API Setup
+- .NET 9 SDK
+- Node.js 18+
+- PostgreSQL (or use the Supabase-hosted database)
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/zeyadelganainy/finance-tracker-api.git
-   cd finance-tracker-api
-   ```
+### Running the API
 
-2. **Navigate to API directory**
-   ```bash
-   cd apps/api
-   ```
+```bash
+cd apps/api/FinanceTracker
+dotnet restore
+dotnet run
+```
 
-3. **Configure database connection**
-   
-   Edit `FinanceTracker/appsettings.Development.json`:
-   ```json
-   {
-     "ConnectionStrings": {
-       "Default": "Host=localhost;Database=finance_tracker;Username=your_user;Password=your_password"
-     },
-     "Cors": {
-       "AllowedOrigins": [
-         "http://localhost:3000",
-         "http://localhost:5173"
-       ]
-     }
-   }
-   ```
+API runs at `http://localhost:5000`. In development, OpenAPI docs are available at `http://localhost:5000/scalar`.
 
-   Never commit real connection strings. Use environment variables in production.
+### Running the Frontend
 
-4. **Apply database migrations**
-   ```bash
-   cd FinanceTracker
-   dotnet ef database update
-   ```
+```bash
+cd apps/web
+npm install
+npm run dev
+```
 
-   This creates all tables, indexes, and constraints.
+Frontend runs at `http://localhost:5173`.
 
-5. **Run the API**
-   ```bash
-   dotnet run
-   ```
+### Configuration
 
-   API runs at `http://localhost:5000`
-   
-   OpenAPI docs (development only) at `http://localhost:5000/scalar`
+**API** (`apps/api/FinanceTracker/appsettings.Development.json`):
+```json
+{
+  "ConnectionStrings": {
+    "Default": "Host=localhost;Database=financetracker;Username=...;Password=..."
+  },
+  "Auth": {
+    "Issuer": "https://sltityabtomzdavnlinv.supabase.co/auth/v1",
+    "Audience": "authenticated"
+  },
+  "Cors": {
+    "AllowedOrigins": ["http://localhost:5173"]
+  }
+}
+```
 
-6. **Verify health**
-   ```bash
-   curl http://localhost:5000/health
-   curl http://localhost:5000/health/ready
-   ```
+**Frontend** (`apps/web/.env`):
+```bash
+VITE_API_BASE_URL=http://localhost:5000
+VITE_SUPABASE_URL=https://sltityabtomzdavnlinv.supabase.co
+VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
+```
 
 ### Running Tests
 
 ```bash
-# From apps/api directory
 cd apps/api
-
-# Run all tests
 dotnet test
-
-# Run with detailed output
-dotnet test --verbosity normal
-
-# Run in Release configuration
-dotnet test -c Release
 ```
 
-96 integration tests cover all endpoints, validation, and error scenarios.
+The API includes 118 integration tests covering all endpoints, validation, error handling, and multi-user data isolation.
 
----
+## Deployment
 
-## CI & Quality
+### Frontend (Vercel)
 
-### Continuous Integration
+The frontend is deployed to Vercel with automatic deployments on push to `main`.
 
-GitHub Actions workflow runs on every push and pull request:
+Environment variables in Vercel:
+- `VITE_API_BASE_URL` - Production API URL
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
 
-1. **Restore** - Download NuGet packages (with caching for faster builds)
-2. **Build** - Compile in Release configuration
-3. **Test** - Run all 96 tests with detailed output
-4. **Format Check** - Verify code formatting (non-blocking)
-5. **Deploy** - Automatic deployment to AWS App Runner (main branch only)
+### Backend (AWS App Runner)
 
-**Build Status:** ![CI Status](https://github.com/zeyadelganainy/finance-tracker-api/workflows/CI/badge.svg)
+The API is deployed to AWS App Runner with automatic deployments via GitHub Actions.
 
-### Continuous Deployment
+CI/CD workflow (`.github/workflows/ci.yml`):
+1. Run tests
+2. Build Docker image
+3. Push to Amazon ECR (us-east-2)
+4. Deploy to App Runner
+5. Health check verification
 
-**Automated Deployment**: Every push to `main` automatically deploys to AWS App Runner
+Environment variables in App Runner:
+- `ConnectionStrings__Default` - PostgreSQL connection string
+- `Auth__Issuer` - Supabase Auth issuer URL
+- `Auth__Audience` - JWT audience claim
+- `CORS_ALLOWED_ORIGINS` - Comma-separated list of allowed origins
 
-**Deployment Flow**:
-```
-Push to main → Run tests → Build Docker → Push to ECR → Deploy → Health check → Live!
-```
+Deployment time: ~8-12 minutes from push to live.
 
-**Setup Guide**: See [`docs/CICD_SETUP_GUIDE.md`](docs/CICD_SETUP_GUIDE.md) for complete CI/CD configuration
+## API Documentation
 
-**Requirements**:
-- AWS IAM credentials (stored as GitHub Secrets)
-- App Runner Service ARN
-- 3 GitHub Secrets: `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `APP_RUNNER_SERVICE_ARN`
+See [API.md](./API.md) for complete API documentation including:
+- Authentication and authorization
+- All available endpoints
+- Request/response formats
+- Error handling
 
-**Deployment Time**: ~8-12 minutes from push to live
+## Key Features
 
-### Quality Metrics
+**Transactions**: Track income and expenses with categories, dates, and descriptions.
 
-- **Test Coverage:** 96 integration tests (100% pass rate)
-- **Test Strategy:** Controller-level integration tests with in-memory database
-- **Code Quality:** Automated formatting checks in CI
+**Categories**: Organize transactions into user-defined categories.
 
-### Database Quality
+**Accounts**: Manage bank accounts, credit cards, and investment accounts.
 
-- **Performance:** Indexed queries on `Transactions.Date` and `Transactions.CategoryId`
-- **Data Integrity:** Unique constraints on category names and account snapshots
-- **Referential Integrity:** Explicit foreign key behaviors (RESTRICT for transactions, CASCADE for snapshots)
-- **Migration Safety:** Schema changes version-controlled with EF Core migrations
+**Assets**: Track stocks, cryptocurrencies, and other investments with cost basis and quantity.
 
----
+**Account Snapshots**: Record account balances at specific dates for historical tracking.
 
-## Production Deployment
+**Net Worth Calculation**: View net worth over time with daily, weekly, or monthly intervals.
 
-### AWS App Runner (Recommended)
+**Monthly Summaries**: See aggregated income, expenses, and category breakdowns by month.
 
-Deploy the Finance Tracker API to AWS App Runner with automatic scaling and managed infrastructure.
+**Multi-User Support**: Each user's data is isolated and secure.
 
-**Quick Deploy**:
-```bash
-# 1. Build and push to ECR
-cd apps/api
-docker build -t finance-tracker-api:latest .
+## Roadmap
 
-# 2. Deploy to App Runner
-# See docs/QUICK_DEPLOY.md for complete instructions
-```
+- Asset valuation integration (market prices for stocks, crypto, etc.)
+- Budget tracking and alerts
+- Recurring transaction support
+- Export data (CSV, JSON)
+- Mobile-responsive UI improvements
 
-**Features**:
-- Automatic HTTPS with AWS-managed certificates
-- Built-in auto-scaling (1-10 instances)
-- Health checks with `/health` endpoint
-- CloudWatch logging and metrics
-- Zero-downtime deployments
+## Tech Details
 
-**Documentation**:
-- **Complete Guide**: [`docs/AWS_APP_RUNNER_DEPLOYMENT.md`](docs/AWS_APP_RUNNER_DEPLOYMENT.md) - Comprehensive 50-page guide
-- **Quick Deploy**: [`docs/QUICK_DEPLOY.md`](docs/QUICK_DEPLOY.md) - 5-minute reference
-- **Checklist**: [`docs/DEPLOYMENT_CHECKLIST.md`](docs/DEPLOYMENT_CHECKLIST.md) - Pre/post deployment tasks
-- **Summary**: [`docs/AWS_DEPLOYMENT_SUMMARY.md`](docs/AWS_DEPLOYMENT_SUMMARY.md) - Overview and features
+**Backend Testing**: 118 integration tests with in-memory database
 
-**CI/CD**: Automated deployment on push to `main` (`.github/workflows/deploy-apprunner.yml`)
+**Database Optimization**:
+- Indexed queries on transaction dates and categories
+- Unique constraints on categories and account snapshots
+- Row-level security policies
 
-**Cost**: ~$56-60/month for always-on service with 1 vCPU and 2GB memory
+**Authentication Flow**:
+1. User authenticates with Supabase Auth (frontend)
+2. Supabase returns JWT token
+3. Frontend includes token in API requests
+4. API validates token via JWKS endpoint
+5. User-scoped queries filter by authenticated user ID
 
----
+**CORS Configuration**: The API allows requests from the Vercel frontend and localhost (development). Wildcard origins are rejected in production.
 
-### Docker (Local/Self-Hosted)
+## License
 
-For local development or self-hosted deployments:
-
-```bash
-# Build image (from repository root)
-docker build -f apps/api/Dockerfile -t finance-tracker-api .
-
-# Run container
-docker run -d -p 8080:8080 \
-  -e ASPNETCORE_ENVIRONMENT=Production \
-  -e ConnectionStrings__Default="Host=db;Database=finance;Username=user;Password=pass" \
-  -e Cors__AllowedOrigins__0="https://your-frontend.com" \
-  finance-tracker-api
-
-# Verify health
-curl http://localhost:8080/health
-curl http://localhost:8080/health/ready
+MIT
