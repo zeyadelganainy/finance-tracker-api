@@ -86,8 +86,11 @@ builder.Services.Configure<AuthConfiguration>(builder.Configuration.GetSection(A
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 
-// Configure CORS policy for frontend
-// Priority: Environment variable > appsettings.json
+// ========================================
+// CORS Configuration
+// ========================================
+// Priority: CORS_ALLOWED_ORIGINS environment variable > appsettings.json
+// Example: CORS_ALLOWED_ORIGINS=https://wealthwise-sable.vercel.app,http://localhost:5173
 var corsOriginsEnv = builder.Configuration["CORS_ALLOWED_ORIGINS"];
 string[] allowedOrigins;
 
@@ -107,11 +110,12 @@ else
 }
 
 // Security: Reject wildcard origin in production
-if (builder.Environment.IsProduction() && allowedOrigins.Contains("*"))
+if (builder.Environment.IsProduction() && (allowedOrigins.Contains("*") || allowedOrigins.Length == 0))
 {
     throw new InvalidOperationException(
-        "Wildcard CORS origin (*) is not allowed in production. " +
-        "Set CORS_ALLOWED_ORIGINS environment variable with specific origins (comma-separated).");
+        "Production requires explicit CORS origins. " +
+        "Set CORS_ALLOWED_ORIGINS environment variable in App Runner with comma-separated origins. " +
+        "Example: https://wealthwise-sable.vercel.app,http://localhost:5173");
 }
 
 // Log configured origins for debugging
@@ -122,18 +126,18 @@ logger.LogInformation("CORS configured with {Count} allowed origin(s): {Origins}
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFrontend", policy =>
+    options.AddPolicy("CorsPolicy", policy =>
     {
         if (allowedOrigins.Length > 0)
         {
             policy.WithOrigins(allowedOrigins)
-                  .WithHeaders("Authorization", "Content-Type", "Accept")
-                  .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
-                  .AllowCredentials();
+                  .WithHeaders("Authorization", "Content-Type")
+                  .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
+            // Do NOT call AllowCredentials() - not using cookies, only Authorization header
         }
         else
         {
-            // No origins configured - allow nothing (secure default)
+            // No origins configured - block all cross-origin requests (secure default)
             logger.LogWarning("No CORS origins configured. All cross-origin requests will be blocked.");
         }
     });
@@ -181,20 +185,29 @@ else if (builder.Environment.EnvironmentName != "Test")
 
 var app = builder.Build();
 
-// CORS MUST be before Authentication/Authorization for preflight requests
-app.UseCors("AllowFrontend");
+// ========================================
+// Middleware Pipeline - CORRECT ORDER
+// ========================================
+// 1. Routing (required for endpoint routing)
+app.UseRouting();
 
-// Request logging middleware (logs all requests including OPTIONS)
+// 2. CORS (must be after UseRouting and before UseAuthentication)
+//    Handles preflight OPTIONS requests before authentication
+app.UseCors("CorsPolicy");
+
+// 3. Request logging (logs all requests including OPTIONS)
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// Authentication & Authorization middleware (MUST be in this order)
+// 4. Authentication (validates JWT tokens)
 app.UseAuthentication();
+
+// 5. Authorization (checks [Authorize] attributes)
 app.UseAuthorization();
 
-// Global exception handling middleware (AFTER auth for proper 401/403)
+// 6. Exception handling (AFTER auth for proper 401/403 responses)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// Map controllers
+// 7. Map controllers (endpoint execution)
 app.MapControllers();
 
 // Enable OpenAPI and Scalar UI only in Development
