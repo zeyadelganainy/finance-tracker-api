@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { cn } from '../../lib/utils';
 
 interface CardProps {
   children: ReactNode;
@@ -8,11 +9,11 @@ interface CardProps {
   actions?: ReactNode;
 }
 
-export function Card({ children, className = '', title, description, actions }: CardProps) {
+export function Card({ children, className, title, description, actions }: CardProps) {
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${className}`}>
+    <div className={cn('bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden transition-shadow duration-200', className)}>
       {(title || description || actions) && (
-        <div className="px-6 py-4 border-b border-gray-200 flex items-start justify-between">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-start justify-between bg-gray-50/50">
           <div>
             {title && <h3 className="text-lg font-semibold text-gray-900">{title}</h3>}
             {description && <p className="text-sm text-gray-600 mt-1">{description}</p>}
@@ -38,16 +39,16 @@ interface StatCardProps {
 
 export function StatCard({ label, value, trend, icon, valueColor }: StatCardProps) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-600 uppercase tracking-wider">{label}</span>
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow duration-200">
+      <div className="flex items-center justify-between mb-3">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{label}</span>
         {icon && <div className="text-gray-400">{icon}</div>}
       </div>
-      <div className={`text-3xl font-bold ${valueColor || 'text-gray-900'}`}>
+      <div className={cn('text-2xl md:text-3xl font-bold', valueColor || 'text-gray-900')}>
         {value}
       </div>
       {trend && (
-        <div className={`text-sm mt-2 ${trend.positive ? 'text-green-600' : 'text-red-600'}`}>
+        <div className={cn('text-sm mt-2 flex items-center gap-1', trend.positive ? 'text-green-600' : 'text-red-600')}>
           {trend.positive ? '↑' : '↓'} {Math.abs(trend.value)}%
         </div>
       )}

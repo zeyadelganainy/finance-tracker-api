@@ -8,6 +8,9 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
 import { Card } from '../components/ui/Card';
+import { Badge } from '../components/ui/Badge';
+import { CardSkeleton } from '../components/ui/Skeleton';
+import { EmptyState } from '../components/ui/EmptyState';
 
 export function AccountsPage() {
   const navigate = useNavigate();
@@ -21,75 +24,94 @@ export function AccountsPage() {
   });
   
   return (
-    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Accounts</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              {(accounts || []).length} account{(accounts || []).length !== 1 ? 's' : ''}
-            </p>
-          </div>
-          <Button onClick={() => setShowCreateModal(true)}>
-            + New Account
-          </Button>
-        </div>
-      </div>
-      
-      {/* Account List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full spinner" />
-        </div>
-      ) : (accounts || []).length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {(accounts || []).map((account) => (
-            <div
-              key={account.id}
-              onClick={() => navigate(`/accounts/${account.id}`)}
-              className="cursor-pointer"
-            >
-              <Card className="hover:shadow-lg transition-shadow">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-semibold text-gray-900">{account.name}</h3>
-                  <p className="text-sm text-gray-500 mt-1">
-                    {account.type} {account.isLiability ? '(Liability)' : ''}
-                  </p>
-                  <p className="text-xs text-gray-400 mt-1">
-                    ID: {account.id}
-                  </p>
-                </div>
-                <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                </svg>
-              </div>
-            </Card>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Accounts</h1>
+              <p className="mt-2 text-sm text-gray-600">
+                {(accounts || []).length} account{(accounts || []).length !== 1 ? 's' : ''}
+              </p>
             </div>
-          ))}
-        </div>
-      ) : (
-        <Card>
-          <div className="text-center py-12">
-            <p className="text-gray-500">No accounts yet</p>
-            <Button className="mt-4" onClick={() => setShowCreateModal(true)}>
-              Create Your First Account
+            <Button onClick={() => setShowCreateModal(true)}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Account
             </Button>
           </div>
-        </Card>
-      )}
+        </div>
+        
+        {/* Account List */}
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+        ) : (accounts || []).length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(accounts || []).map((account) => (
+              <div
+                key={account.id}
+                onClick={() => navigate(`/accounts/${account.id}`)}
+                className="cursor-pointer group"
+              >
+                <Card className="hover:shadow-lg transition-all hover:scale-[1.02]">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white text-xl font-bold">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{account.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="info">{account.type}</Badge>
+                          {account.isLiability && <Badge variant="warning">Liability</Badge>}
+                        </div>
+                      </div>
+                    </div>
+                    <svg className="w-6 h-6 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </Card>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <EmptyState
+              icon={
+                <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                </svg>
+              }
+              title="No accounts yet"
+              description="Create accounts to track your financial balances"
+              action={{
+                label: "Create Account",
+                onClick: () => setShowCreateModal(true),
+              }}
+            />
+          </Card>
+        )}
       
-      {/* Create Modal */}
-      {showCreateModal && (
-        <CreateAccountModal
-          onClose={() => setShowCreateModal(false)}
-          onSuccess={() => {
-            setShowCreateModal(false);
-            queryClient.invalidateQueries({ queryKey: ['accounts'] });
-          }}
-        />
-      )}
+        {/* Create Modal */}
+        {showCreateModal && (
+          <CreateAccountModal
+            onClose={() => setShowCreateModal(false)}
+            onSuccess={() => {
+              setShowCreateModal(false);
+              queryClient.invalidateQueries({ queryKey: ['accounts'] });
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }
@@ -134,7 +156,7 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
   
   return (
     <Modal isOpen onClose={onClose} title="New Account" size="md">
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <Input
           type="text"
           label="Account Name"
@@ -142,6 +164,7 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
           placeholder="e.g., Main Checking, Savings"
+          autoFocus
         />
         <Input
           type="text"
@@ -151,24 +174,24 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
           required
           placeholder="e.g., checking, savings, credit"
         />
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
           <input
             type="checkbox"
             id="isLiability"
             checked={formData.isLiability}
             onChange={(e) => setFormData({ ...formData, isLiability: e.target.checked })}
-            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
           />
           <label htmlFor="isLiability" className="text-sm font-medium text-gray-700">
             This is a liability account (e.g., credit card, loan)
           </label>
         </div>
-        <div className="flex justify-end gap-3 pt-4">
-          <Button type="button" variant="secondary" onClick={onClose}>
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+          <Button type="button" variant="outline" onClick={onClose} disabled={createMutation.isPending}>
             Cancel
           </Button>
-          <Button type="submit" disabled={createMutation.isPending}>
-            {createMutation.isPending ? 'Creating...' : 'Create Account'}
+          <Button type="submit" isLoading={createMutation.isPending}>
+            Create Account
           </Button>
         </div>
       </form>
