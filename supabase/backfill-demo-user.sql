@@ -2,18 +2,12 @@
 -- This script assigns all existing data to the demo user account
 -- Run this BEFORE applying the NOT NULL constraints in the EF migration
 
--- ?? IMPORTANT: Replace 'YOUR-DEMO-USER-UUID-HERE' with the actual Supabase auth.uid() of your demo account
--- You can get this from Supabase Dashboard > Authentication > Users > select demo user > copy UID
+-- Demo user UUID: 4960b4c0-3eb5-4df1-905e-efc6b7152dea
 
 DO $$
 DECLARE
-    demo_user_id UUID := 'YOUR-DEMO-USER-UUID-HERE'::uuid; -- ?? REPLACE THIS
+    demo_user_id UUID := '4960b4c0-3eb5-4df1-905e-efc6b7152dea'::uuid;
 BEGIN
-    -- Validate that demo_user_id is set
-    IF demo_user_id = 'YOUR-DEMO-USER-UUID-HERE'::uuid THEN
-        RAISE EXCEPTION 'Please set the demo_user_id variable to your actual demo user UUID';
-    END IF;
-
     -- Update Accounts
     UPDATE "Accounts"
     SET "UserId" = demo_user_id

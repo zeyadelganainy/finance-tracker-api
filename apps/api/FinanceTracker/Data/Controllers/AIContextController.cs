@@ -107,8 +107,8 @@ public class AIContextController : ControllerBase
             totalIncome,
             totalExpenses,
             totalIncome + totalExpenses, // Net (expenses are negative)
-            transactions.Count > 0 ? transactions.First().Date : null,
-            transactions.Count > 0 ? transactions.Last().Date : null,
+            transactions.Count > 0 ? transactions.First().Date : (DateOnly?)null,
+            transactions.Count > 0 ? transactions.Last().Date : (DateOnly?)null,
             categoryBreakdown
         );
 
