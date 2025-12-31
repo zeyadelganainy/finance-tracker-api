@@ -48,9 +48,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     
-    env:
-      AWS_REGION: us-east-2
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -67,6 +64,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         with:
           mask-password: 'true'
+          region: us-east-2
 
       - name: Build, tag, and push image to Amazon ECR
         id: build-image
@@ -95,6 +93,7 @@ jobs:
           timeout 600 bash -c 'until aws apprunner describe-service --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} --region us-east-2 --query "Service.Status" --output text | grep -q "RUNNING"; do echo "Waiting..."; sleep 10; done' || echo "Timeout reached, check AWS Console"
 
       - name: Get service URL
+        id: get-url
         run: |
           SERVICE_URL=$(aws apprunner describe-service \
             --service-arn ${{ secrets.APP_RUNNER_SERVICE_ARN }} \
@@ -119,4 +118,4 @@ jobs:
           echo "- **URL**: ${{ steps.get-url.outputs.url }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Health Check" >> $GITHUB_STEP_SUMMARY
-          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY
+          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY          echo "? Deployment triggered successfully" >> $GITHUB_STEP_SUMMARY
