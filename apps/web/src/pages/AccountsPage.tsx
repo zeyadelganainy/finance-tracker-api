@@ -67,12 +67,18 @@ export function AccountsPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">{account.name}</h3>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="info">{account.type}</Badge>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
+                          {account.name}
+                        </h3>
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {account.type && <Badge variant="info">{account.type}</Badge>}
                           {account.isLiability && <Badge variant="warning">Liability</Badge>}
+                          <Badge variant="default">{account.currency}</Badge>
                         </div>
+                        {account.institution && (
+                          <p className="text-xs text-gray-500 mt-2">{account.institution}</p>
+                        )}
                       </div>
                     </div>
                     <svg className="w-6 h-6 text-gray-400 group-hover:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -126,7 +132,9 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
+    institution: '',
     type: 'checking',
+    currency: 'USD',
     isLiability: false,
   });
   
@@ -147,9 +155,15 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.name.trim()) {
+      showToast('Account name is required', 'error');
+      return;
+    }
     createMutation.mutate({
       name: formData.name.trim(),
-      type: formData.type,
+      institution: formData.institution.trim() || undefined,
+      type: formData.type.trim() || undefined,
+      currency: formData.currency.toUpperCase() || 'USD',
       isLiability: formData.isLiability,
     });
   };
@@ -163,16 +177,29 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
           required
-          placeholder="e.g., Main Checking, Savings"
+          placeholder="e.g., Chase Checking, Savings"
           autoFocus
         />
         <Input
           type="text"
-          label="Account Type"
+          label="Institution (Optional)"
+          value={formData.institution}
+          onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
+          placeholder="e.g., Chase Bank, Fidelity"
+        />
+        <Input
+          type="text"
+          label="Type (Optional)"
           value={formData.type}
           onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-          required
-          placeholder="e.g., checking, savings, credit"
+          placeholder="e.g., checking, savings, investment"
+        />
+        <Input
+          type="text"
+          label="Currency"
+          value={formData.currency}
+          onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() })}
+          placeholder="USD"
         />
         <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 border border-gray-200">
           <input

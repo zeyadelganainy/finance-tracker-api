@@ -53,24 +53,45 @@ export function AssetsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(assets || []).map((asset) => (
               <Card key={asset.id} className="hover:shadow-lg transition-all">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900 truncate">{asset.name}</h3>
+                    <h3 className="text-lg font-semibold text-gray-900">{asset.name}</h3>
+                    
+                    {/* Badges */}
                     <div className="flex flex-wrap gap-2 mt-2">
-                      {asset.assetClass && (
-                        <Badge variant="info">{asset.assetClass}</Badge>
-                      )}
-                      {asset.ticker && (
-                        <Badge variant="default">{asset.ticker}</Badge>
-                      )}
+                      <Badge variant="info">{asset.assetClass}</Badge>
+                      {asset.ticker && <Badge variant="default">{asset.ticker}</Badge>}
                     </div>
-                    {!asset.assetClass && !asset.ticker && (
-                      <p className="text-sm text-gray-400 mt-2">No additional details</p>
+                    
+                    {/* Details */}
+                    <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
+                      <div>
+                        <p className="text-xs text-gray-500">Quantity</p>
+                        <p className="font-semibold text-gray-900">
+                          {asset.quantity} {asset.unit ? asset.unit : ''}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Cost Basis</p>
+                        <p className="font-semibold text-gray-900">
+                          ${asset.costBasisTotal.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {/* Additional Info */}
+                    {(asset.purchaseDate || asset.notes) && (
+                      <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-600 space-y-1">
+                        {asset.purchaseDate && (
+                          <p>Purchased {new Date(asset.purchaseDate).toLocaleDateString()}</p>
+                        )}
+                        {asset.notes && <p className="italic">{asset.notes}</p>}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -86,7 +107,7 @@ export function AssetsPage() {
                 </svg>
               )}
               title="No assets yet"
-              description="Track your investments by creating asset records"
+              description="Track your investments by creating asset records with quantity, cost basis, and ROI data"
               action={{
                 label: "Create Asset",
                 onClick: () => setShowCreateModal(true),
@@ -120,8 +141,13 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
-    assetClass: '',
+    assetClass: 'stock',
     ticker: '',
+    quantity: '',
+    unit: 'shares',
+    costBasisTotal: '',
+    purchaseDate: '',
+    notes: '',
   });
   
   const createMutation = useMutation({
@@ -141,45 +167,199 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validation
     if (!formData.name.trim()) {
       showToast('Asset name is required', 'error');
       return;
     }
-    createMutation.mutate({
+    
+    if (!formData.assetClass.trim()) {
+      showToast('Asset class is required', 'error');
+      return;
+    }
+    
+    if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
+      showToast('Quantity must be greater than 0', 'error');
+      return;
+    }
+    
+    if (!formData.costBasisTotal || parseFloat(formData.costBasisTotal) < 0) {
+      showToast('Cost basis must be 0 or greater', 'error');
+      return;
+    }
+    
+    const assetClass = formData.assetClass.toLowerCase();
+    
+    // Stock-specific validation
+    if (assetClass === 'stock' && !formData.ticker.trim()) {
+      showToast('Ticker is required for stocks', 'error');
+      return;
+    }
+    
+    // Metal-specific validation
+    if (assetClass === 'metal' && !formData.unit.trim()) {
+      showToast('Unit is required for metals (e.g., oz, g, kg)', 'error');
+      return;
+    }
+    
+    const submitData: CreateAssetRequest = {
       name: formData.name.trim(),
-      assetClass: formData.assetClass.trim() || undefined,
-      ticker: formData.ticker.trim().toUpperCase() || undefined,
-    });
+      assetClass,
+      ticker: formData.ticker.trim() || undefined,
+      quantity: parseFloat(formData.quantity),
+      unit: formData.unit.trim() || undefined,
+      costBasisTotal: parseFloat(formData.costBasisTotal),
+      purchaseDate: formData.purchaseDate || undefined,
+      notes: formData.notes.trim() || undefined,
+    };
+    
+    createMutation.mutate(submitData);
   };
   
+  const assetClass = formData.assetClass.toLowerCase();
+  
   return (
-    <Modal isOpen onClose={onClose} title="New Asset" size="md">
+    <Modal isOpen onClose={onClose} title="New Asset" size="lg">
       <form onSubmit={handleSubmit} className="space-y-5">
+        {/* Basic Info */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            type="text"
+            label="Asset Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+            placeholder="e.g., Apple Stock, Bitcoin, Gold"
+            autoFocus
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Asset Class <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={formData.assetClass}
+              onChange={(e) => {
+                setFormData({
+                  ...formData,
+                  assetClass: e.target.value,
+                  unit: e.target.value === 'stock' ? 'shares' : '',
+                  ticker: '',
+                });
+              }}
+              required
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            >
+              <option value="stock">Stock</option>
+              <option value="crypto">Crypto</option>
+              <option value="metal">Metal</option>
+              <option value="cashequivalent">Cash Equivalent</option>
+              <option value="realestate">Real Estate</option>
+            </select>
+          </div>
+        </div>
+        
+        {/* Asset Class Specific Fields */}
+        {(assetClass === 'stock' || assetClass === 'crypto') && (
+          <Input
+            type="text"
+            label={`Ticker ${assetClass === 'stock' ? '(Required)' : '(Optional)'}`}
+            value={formData.ticker}
+            onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
+            required={assetClass === 'stock'}
+            placeholder={assetClass === 'stock' ? 'e.g., AAPL' : 'e.g., BTC'}
+          />
+        )}
+        
+        {/* Quantity & Unit */}
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            type="number"
+            step="0.00000001"
+            label="Quantity"
+            value={formData.quantity}
+            onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+            required
+            placeholder="0.00"
+          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Unit {assetClass === 'metal' && <span className="text-red-500">*</span>}
+            </label>
+            {assetClass === 'stock' ? (
+              <input
+                type="text"
+                value={formData.unit}
+                disabled
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-500"
+              />
+            ) : (
+              <input
+                type="text"
+                value={formData.unit}
+                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
+                required={assetClass === 'metal'}
+                placeholder={assetClass === 'metal' ? 'e.g., oz, g, kg' : 'e.g., btc, units'}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              />
+            )}
+          </div>
+        </div>
+        
+        {/* Cost Basis */}
         <Input
-          type="text"
-          label="Asset Name"
-          value={formData.name}
-          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+          type="number"
+          step="0.01"
+          label="Total Cost Basis"
+          value={formData.costBasisTotal}
+          onChange={(e) => setFormData({ ...formData, costBasisTotal: e.target.value })}
           required
-          placeholder="e.g., Apple Stock, Bitcoin, Gold"
-          autoFocus
+          placeholder="0.00"
+          helperText="Total amount paid for this asset"
         />
-        <Input
-          type="text"
-          label="Asset Class (Optional)"
-          value={formData.assetClass}
-          onChange={(e) => setFormData({ ...formData, assetClass: e.target.value })}
-          placeholder="e.g., Stock, Crypto, Commodity"
-        />
-        <Input
-          type="text"
-          label="Ticker Symbol (Optional)"
-          value={formData.ticker}
-          onChange={(e) => setFormData({ ...formData, ticker: e.target.value })}
-          placeholder="e.g., AAPL, BTC, XAU"
-        />
+        
+        {/* Optional Fields */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            type="date"
+            label="Purchase Date (Optional)"
+            value={formData.purchaseDate}
+            onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+          />
+        </div>
+        
+        {/* Notes */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Notes (Optional)
+          </label>
+          <textarea
+            value={formData.notes}
+            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+            placeholder="e.g., Investment grade gold bars, tech sector, etc."
+            rows={3}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+          />
+        </div>
+        
+        {/* Helper Text */}
+        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+          <p className="text-sm text-gray-700">
+            <strong>Note:</strong> {assetClass === 'stock' && 'Ticker is required for stocks.'}
+            {assetClass === 'metal' && 'Unit (oz, g, kg) is required for metals.'}
+            {assetClass === 'crypto' && 'Enter crypto symbol for reference.'}
+            {!['stock', 'metal', 'crypto'].includes(assetClass) && 'Fill in available information for your asset type.'}
+          </p>
+        </div>
+        
+        {/* Actions */}
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
-          <Button type="button" variant="outline" onClick={onClose} disabled={createMutation.isPending}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={createMutation.isPending}
+          >
             Cancel
           </Button>
           <Button type="submit" isLoading={createMutation.isPending}>

@@ -36,29 +36,63 @@ export interface CreateTransactionRequest {
 export interface Account {
   id: string; // GUID
   name: string;
-  type: string;
+  institution?: string; // Bank name, brokerage, etc.
+  type?: string;
+  currency: string; // Default "USD"
   isLiability: boolean;
+  createdAt: string; // ISO datetime
+  updatedAt: string; // ISO datetime
+}
+
+export interface AccountDetail extends Account {
+  latestBalance?: number; // Most recent snapshot balance
+  latestBalanceDate?: string; // YYYY-MM-DD
+  snapshotCount: number; // Total number of snapshots
 }
 
 export interface CreateAccountRequest {
   name: string;
-  type: string;
-  isLiability: boolean;
+  institution?: string;
+  type?: string;
+  currency?: string;
+  isLiability?: boolean;
+}
+
+export interface UpdateAccountRequest {
+  name: string;
+  institution?: string;
+  type?: string;
+  currency?: string;
+  isLiability?: boolean;
 }
 
 // Assets
 export interface Asset {
   id: string; // GUID
   name: string;
-  assetClass: string | null;
-  ticker: string | null;
+  assetClass: string; // Stock, Crypto, Metal, etc.
+  ticker?: string; // Stock/crypto symbol
+  quantity: number; // Amount held (decimal)
+  unit?: string; // oz, g, kg, shares, btc, etc.
+  costBasisTotal: number; // Total cost basis for ROI
+  purchaseDate?: string; // ISO date or null
+  notes?: string; // Additional info
+  createdAt: string; // ISO datetime
+  updatedAt: string; // ISO datetime
 }
 
 export interface CreateAssetRequest {
   name: string;
-  assetClass?: string;
+  assetClass: string; // Required
   ticker?: string;
+  quantity: number; // Required, > 0
+  unit?: string;
+  costBasisTotal: number; // Required, >= 0
+  purchaseDate?: string; // Optional, ISO date format
+  notes?: string;
 }
+
+export interface UpdateAssetRequest extends CreateAssetRequest {}
 
 // Account Snapshots
 export interface AccountSnapshot {
