@@ -173,6 +173,220 @@ If you see CORS errors in the browser console:
 - [ ] Add pagination controls
 - [ ] Deploy to Vercel/Netlify
 
+## AI Roadmap
+
+This frontend is wired and ready for AI-powered features without requiring any backend changes. Here's the implementation plan:
+
+### Phase 1: Data Structure (✅ COMPLETED)
+
+**Status**: All endpoints and UI are ready
+
+- ✅ `/ai/context` endpoint - Fetches comprehensive financial data
+- ✅ `/assets/valuation` endpoint - Placeholder for asset pricing
+- ✅ AI Page (`/ai`) - Dedicated interface for AI interactions
+- ✅ Valuation Section - Asset cards show valuation placeholders
+- ✅ AI Insights Card - Dashboard card with "Generate Insights" button
+
+**Deliverables**:
+- New `AIPage` component with prompt input
+- `useAIContext()` hook for fetching financial data
+- `useAssetValuation()` hook for valuation data
+- Valuation section on asset cards showing "Coming Soon"
+- AI Insights card on dashboard with context viewer
+
+### Phase 2: Market Pricing (FUTURE)
+
+**What Needs to Be Done**:
+- Integrate third-party pricing APIs:
+  - **Stocks**: Alpha Vantage, IEX Cloud, or Yahoo Finance
+  - **Crypto**: CoinGecko API, CoinMarketCap
+  - **Metals**: Metals.live API or similar
+  
+**Frontend Changes Required**: Minimal
+- Update `useAssetValuation()` to show real prices
+- Valuation section will auto-populate with `currentValue` and `roiPercentage`
+- No UI changes needed - just data flowing through
+
+**Backend Changes**: Update `ValuationController`:
+```csharp
+// Current: Returns null prices
+currentPrice: null,
+currentValue: null,
+roiPercentage: null,
+valuationStatus: "NOT_AVAILABLE"
+
+// Future: Returns real data
+currentPrice: 150.50,  // From pricing API
+currentValue: 15050.00, // quantity * currentPrice
+roiPercentage: 13.67,   // ((currentValue - costBasis) / costBasis) * 100
+valuationStatus: "AVAILABLE"
+```
+
+### Phase 3: LLM Integration (FUTURE)
+
+**What Needs to Be Done**:
+1. Set up OpenAI API (or Claude, etc.)
+2. Create backend endpoint: `POST /ai/insights`
+   - Accepts: financial context + user prompt
+   - Returns: AI-generated insights
+
+**Frontend Changes**:
+```typescript
+// In AIPage.tsx - when user clicks "Analyze"
+const response = await api('/ai/insights', {
+  method: 'POST',
+  body: JSON.stringify({
+    context: aiContext,
+    prompt: userPrompt
+  })
+});
+// Display response.insights
+```
+
+**Example Prompt**:
+```
+Based on this financial data: {json}
+
+Provide:
+1. Financial health score (1-10)
+2. Top 3 spending categories to reduce
+3. Asset allocation recommendations
+4. Emergency fund adequacy
+5. Savings rate assessment
+```
+
+### Phase 4: Advanced Features (FUTURE)
+
+- Historical valuation tracking
+- Investment performance charts
+- Spending pattern analysis
+- Personalized budget recommendations
+- Tax optimization suggestions
+- Multi-turn conversations
+- Expense categorization AI
+- Savings goal planning
+
+### Current Implementation Details
+
+**Files Modified**:
+- `src/types/api.ts` - Added AI/Valuation types
+- `src/hooks/useAI.ts` - New hooks for AI endpoints
+- `src/pages/AIPage.tsx` - New dedicated AI page
+- `src/pages/AssetsPage.tsx` - Added Valuation section
+- `src/pages/DashboardPage.tsx` - Added AI Insights card
+- `src/App.tsx` - Registered `/ai` route
+
+**Key Features**:
+- ✅ Fetch `/ai/context` data (accounts, assets, transactions, categories)
+- ✅ Display financial context in developer-friendly JSON viewer
+- ✅ Asset valuation placeholders with "Coming Soon" status
+- ✅ Responsive UI ready for real data
+- ✅ Loading states and error handling
+- ✅ No fake data - real API integration
+
+**Example API Responses** (Currently Implemented):
+
+```typescript
+// GET /ai/context
+{
+  accounts: {
+    totalAccounts: 3,
+    totalBalance: 25000,
+    items: [...]
+  },
+  assets: {
+    totalAssets: 2,
+    totalCostBasis: 35000,
+    items: [...]
+  },
+  transactions: {
+    totalCount: 150,
+    totalIncome: 45000,
+    totalExpenses: -12000,
+    netCashFlow: 33000,
+    categoryBreakdown: [...]
+  },
+  categories: {
+    totalCategories: 10,
+    categoryNames: [...]
+  }
+}
+
+// GET /assets/valuation (Currently all null)
+{
+  assets: [
+    {
+      assetId: "guid",
+      name: "Apple Stock",
+      costBasisTotal: 15000,
+      currentPrice: null,        // Market pricing not yet integrated
+      currentValue: null,
+      roiPercentage: null,
+      valuationStatus: "NOT_AVAILABLE"
+    }
+  ],
+  message: "Market pricing not enabled yet..."
+}
+```
+
+### How to Integrate Phase 2 (Pricing)
+
+1. **Update Backend** `ValuationController.GetValuation()`:
+   ```csharp
+   var valuationData = assets.Select(asset => {
+     var pricing = await pricingService.GetPrice(asset);
+     var currentValue = asset.Quantity * pricing.CurrentPrice;
+     var roi = ((currentValue - asset.CostBasisTotal) / asset.CostBasisTotal) * 100;
+     
+     return new AssetValuationData(
+       asset.Id,
+       asset.Name,
+       // ... other fields ...
+       currentPrice: pricing.CurrentPrice,
+       currentValue: currentValue,
+       roiPercentage: roi,
+       valuationStatus: "AVAILABLE"
+     );
+   });
+   ```
+
+2. **Frontend automatically updates** - no changes needed!
+   - Valuation section shows real values
+   - ROI displays in green/red based on sign
+   - Badge changes from "Coming Soon" to "Updated Today"
+
+### How to Integrate Phase 3 (LLM)
+
+1. **Create Backend Endpoint**:
+   ```csharp
+   [HttpPost("insights")]
+   public async Task<IActionResult> GenerateInsights([FromBody] InsightRequest request)
+   {
+     var prompt = BuildPrompt(request.Context);
+     var insights = await openAiService.CompleteAsync(prompt);
+     return Ok(new { insights });
+   }
+   ```
+
+2. **Update AIPage.tsx**:
+   ```typescript
+   const response = await api('/ai/insights', {
+     method: 'POST',
+     body: JSON.stringify({ context: aiContext, prompt })
+   });
+   setInsights(response.insights);
+   ```
+
+3. **Display Results**:
+   ```tsx
+   <Card>
+     <h3>AI Insights</h3>
+     <p>{insights}</p>
+   </Card>
+   ```
+
+---
+
 ## License
 
 MIT
@@ -180,3 +394,4 @@ MIT
 ## API Repository
 
 Backend API: https://github.com/zeyadelganainy/finance-tracker-api
+

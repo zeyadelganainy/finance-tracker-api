@@ -10,6 +10,7 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
+import { useAssetValuation } from '../hooks/useAI';
 
 export function AssetsPage() {
   const queryClient = useQueryClient();
@@ -20,6 +21,9 @@ export function AssetsPage() {
     queryKey: ['assets'],
     queryFn: () => api<Asset[]>('/assets'),
   });
+  
+  // Fetch valuations (AI-ready, currently stub)
+  const { data: valuationData } = useAssetValuation();
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -51,25 +55,33 @@ export function AssetsPage() {
           </div>
         ) : (assets || []).length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {(assets || []).map((asset) => (
-              <Card key={asset.id} className="hover:shadow-lg transition-all">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900">{asset.name}</h3>
-                    
-                    {/* Badges */}
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      <Badge variant="info">{asset.assetClass}</Badge>
-                      {asset.ticker && <Badge variant="default">{asset.ticker}</Badge>}
+            {(assets || []).map((asset) => {
+              // Find valuation data for this asset
+              const valuation = valuationData?.assets.find(v => v.assetId === asset.id);
+              
+              return (
+                <Card key={asset.id} className="hover:shadow-lg transition-all">
+                  <div className="flex flex-col gap-4">
+                    {/* Asset Header */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-xl font-bold flex-shrink-0">
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-lg font-semibold text-gray-900">{asset.name}</h3>
+                        
+                        {/* Badges */}
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          <Badge variant="info">{asset.assetClass}</Badge>
+                          {asset.ticker && <Badge variant="default">{asset.ticker}</Badge>}
+                        </div>
+                      </div>
                     </div>
                     
-                    {/* Details */}
-                    <div className="grid grid-cols-2 gap-3 mt-3 text-sm">
+                    {/* Cost Basis Details */}
+                    <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <p className="text-xs text-gray-500">Quantity</p>
                         <p className="font-semibold text-gray-900">
@@ -86,17 +98,20 @@ export function AssetsPage() {
                     
                     {/* Additional Info */}
                     {(asset.purchaseDate || asset.notes) && (
-                      <div className="mt-2 pt-2 border-t border-gray-100 text-xs text-gray-600 space-y-1">
+                      <div className="pt-2 border-t border-gray-100 text-xs text-gray-600 space-y-1">
                         {asset.purchaseDate && (
                           <p>Purchased {new Date(asset.purchaseDate).toLocaleDateString()}</p>
                         )}
                         {asset.notes && <p className="italic">{asset.notes}</p>}
                       </div>
                     )}
+                    
+                    {/* Valuation Section (AI-Ready) */}
+                    <ValuationSection valuation={valuation} />
                   </div>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              );
+            })}
           </div>
         ) : (
           <Card>
@@ -368,5 +383,70 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
         </div>
       </form>
     </Modal>
+  );
+}
+
+// Valuation Section Component (AI-Ready)
+interface ValuationSectionProps {
+  valuation: any; // AssetValuationData
+}
+
+function ValuationSection({ valuation }: ValuationSectionProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  return (
+    <div className="pt-3 border-t border-gray-100">
+      <div className="space-y-2">
+        {/* Current Value */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-600">Current Value</span>
+          <span className="text-sm font-semibold text-gray-900">
+            {valuation?.currentValue ? `$${valuation.currentValue.toFixed(2)}` : '—'}
+          </span>
+        </div>
+        
+        {/* ROI */}
+        <div className="flex items-center justify-between">
+          <span className="text-xs text-gray-600">ROI</span>
+          <span className={`text-sm font-semibold ${
+            valuation?.roiPercentage
+              ? valuation.roiPercentage >= 0
+                ? 'text-green-600'
+                : 'text-red-600'
+              : 'text-gray-900'
+          }`}>
+            {valuation?.roiPercentage ? `${valuation.roiPercentage.toFixed(2)}%` : '—'}
+          </span>
+        </div>
+        
+        {/* Status Badge */}
+        <div className="pt-2">
+          <div className="flex items-center gap-2">
+            <Badge 
+              variant="warning"
+              className="text-xs"
+            >
+              Valuation coming soon
+            </Badge>
+            <button
+              type="button"
+              onClick={() => setShowTooltip(!showTooltip)}
+              className="text-gray-400 hover:text-gray-600 transition"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+              </svg>
+            </button>
+          </div>
+          
+          {/* Tooltip */}
+          {showTooltip && (
+            <div className="mt-2 p-2 text-xs text-gray-700 bg-gray-50 rounded border border-gray-200">
+              ROI requires current market price. This will be calculated automatically once market data integration is added.
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }

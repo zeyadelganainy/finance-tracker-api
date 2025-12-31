@@ -8,6 +8,7 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { AccountsPage } from './pages/AccountsPage';
 import { AccountDetailPage } from './pages/AccountDetailPage';
 import { AssetsPage } from './pages/AssetsPage';
+import { AIPage } from './pages/AIPage';
 import './App.css';
 
 const queryClient = new QueryClient({
@@ -33,6 +34,7 @@ function App() {
               <Route path="/accounts" element={<AccountsPage />} />
               <Route path="/accounts/:id" element={<AccountDetailPage />} />
               <Route path="/assets" element={<AssetsPage />} />
+              <Route path="/ai" element={<AIPage />} />
             </Routes>
           </main>
         </BrowserRouter>

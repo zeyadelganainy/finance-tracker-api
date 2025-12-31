@@ -7,17 +7,23 @@ import { formatCurrency } from '../lib/utils';
 import { NetWorthHistoryResponse, MonthlySummary, NetWorthDataPoint } from '../types/api';
 import { StatCard, Card } from '../components/ui/Card';
 import { Select } from '../components/ui/Select';
+import { Button } from '../components/ui/Button';
 import { CardSkeleton } from '../components/ui/Skeleton';
+import { useAIContext } from '../hooks/useAI';
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
 export function DashboardPage() {
   const currentMonth = format(new Date(), 'yyyy-MM');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [showAIContext, setShowAIContext] = useState(false);
   
   // Generate last 6 months for net worth chart
   const sixMonthsAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
   const today = format(new Date(), 'yyyy-MM-dd');
+  
+  // Fetch AI context (used for generating insights later)
+  const { data: aiContext, isLoading: loadingAI } = useAIContext();
   
   // Fetch net worth history
   const { data: netWorthData, isLoading: loadingNetWorth } = useQuery({
@@ -274,6 +280,83 @@ export function DashboardPage() {
                 </div>
               </Card>
             )}
+            
+            {/* AI Insights Card (Beta) */}
+            <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white flex-shrink-0 mt-1">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                      AI Insights <span className="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-1 rounded">Beta</span>
+                    </h3>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Generate personalized financial insights powered by AI analysis
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  onClick={() => setShowAIContext(!showAIContext)}
+                  variant="outline"
+                  className="flex-shrink-0"
+                  isLoading={loadingAI}
+                >
+                  Generate Insights
+                </Button>
+              </div>
+              
+              {/* AI Context Display (for wiring) */}
+              {showAIContext && (
+                <div className="mt-4 pt-4 border-t border-indigo-200">
+                  {loadingAI ? (
+                    <div className="text-sm text-gray-600 italic">Loading context...</div>
+                  ) : aiContext ? (
+                    <div className="space-y-3">
+                      <div className="p-3 bg-white rounded border border-indigo-100">
+                        <p className="text-xs font-semibold text-gray-900 mb-2">Connected Data Summary</p>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                          <div>
+                            <p className="text-gray-500">Accounts</p>
+                            <p className="font-bold text-gray-900">{aiContext.accounts.totalAccounts}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Assets</p>
+                            <p className="font-bold text-gray-900">{aiContext.assets.totalAssets}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Transactions</p>
+                            <p className="font-bold text-gray-900">{aiContext.transactions.totalCount}</p>
+                          </div>
+                          <div>
+                            <p className="text-gray-500">Categories</p>
+                            <p className="font-bold text-gray-900">{aiContext.categories.totalCategories}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <details className="p-3 bg-white rounded border border-indigo-100">
+                        <summary className="text-xs font-semibold text-gray-900 cursor-pointer hover:text-indigo-600">
+                          View Raw Context Data (Developer View)
+                        </summary>
+                        <pre className="mt-2 p-2 bg-gray-50 rounded text-xs overflow-x-auto text-gray-700">
+                          {JSON.stringify(aiContext, null, 2)}
+                        </pre>
+                      </details>
+                      
+                      <p className="text-xs text-gray-600 italic">
+                        💡 Next: Connect to OpenAI or similar LLM to generate insights based on this data.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-600 italic">No context data available</div>
+                  )}
+                </div>
+              )}
+            </Card>
           </>
         )}
       </div>

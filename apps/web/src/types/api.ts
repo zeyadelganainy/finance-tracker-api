@@ -145,6 +145,88 @@ export interface HealthResponse {
   status: string;
 }
 
+// AI Context
+export interface AIContextResponse {
+  accounts: AIAccountsSummary;
+  assets: AIAssetsSummary;
+  transactions: AITransactionsSummary;
+  categories: AICategoriesSummary;
+}
+
+export interface AIAccountsSummary {
+  totalAccounts: number;
+  totalBalance: number;
+  items: AIAccountData[];
+}
+
+export interface AIAccountData {
+  id: string;
+  name: string;
+  type?: string;
+  isLiability: boolean;
+  latestBalance?: number;
+  latestBalanceDate?: string;
+}
+
+export interface AIAssetsSummary {
+  totalAssets: number;
+  totalCostBasis: number;
+  items: AIAssetData[];
+}
+
+export interface AIAssetData {
+  id: string;
+  name: string;
+  assetClass: string;
+  ticker?: string;
+  quantity: number;
+  unit?: string;
+  costBasisTotal: number;
+  purchaseDate?: string;
+}
+
+export interface AITransactionsSummary {
+  totalCount: number;
+  totalIncome: number;
+  totalExpenses: number;
+  netCashFlow: number;
+  earliestDate?: string;
+  latestDate?: string;
+  categoryBreakdown: AICategoryBreakdown[];
+}
+
+export interface AICategoryBreakdown {
+  categoryName: string;
+  total: number;
+  count: number;
+}
+
+export interface AICategoriesSummary {
+  totalCategories: number;
+  categoryNames: string[];
+}
+
+// Asset Valuation
+export interface AssetValuationResponse {
+  assets: AssetValuationData[];
+  message: string;
+}
+
+export interface AssetValuationData {
+  assetId: string;
+  name: string;
+  assetClass: string;
+  ticker?: string;
+  quantity: number;
+  unit?: string;
+  costBasisTotal: number;
+  currentPrice?: number | null;
+  currentValue?: number | null;
+  unrealizedGainLoss?: number | null;
+  roiPercentage?: number | null;
+  valuationStatus: string; // "NOT_AVAILABLE", "PENDING", "AVAILABLE", etc.
+}
+
 // Error
 export interface ErrorResponse {
   error: string;
