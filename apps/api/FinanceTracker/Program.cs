@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Scalar.AspNetCore;
-using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,12 +15,12 @@ var authConfig = builder.Configuration.GetSection(AuthConfiguration.SectionName)
     ?? throw new InvalidOperationException("Auth configuration is missing");
 
 // Validate required auth configuration
-if (string.IsNullOrEmpty(authConfig.Secret))
+if (string.IsNullOrEmpty(authConfig.Issuer))
 {
-    throw new InvalidOperationException("Auth:Secret is required. Set it via environment variable or appsettings.");
+    throw new InvalidOperationException("Auth:Issuer is required. Set SUPABASE_JWT_ISSUER environment variable or appsettings.");
 }
 
-// Configure JWT Bearer Authentication
+// Configure JWT Bearer Authentication with Supabase JWKS
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -29,20 +28,35 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    // Set Authority to Supabase Auth issuer - enables automatic JWKS discovery
+    options.Authority = authConfig.Issuer;
+
+    // JWKS endpoint will be discovered at: {Authority}/.well-known/openid-configuration
+    // Supabase exposes keys at: https://<project>.supabase.co/auth/v1/.well-known/jwks.json
+    options.RequireHttpsMetadata = true; // Enforce HTTPS for JWKS endpoint
+
     options.TokenValidationParameters = new TokenValidationParameters
     {
         ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
         ValidIssuer = authConfig.Issuer,
+        
+        ValidateAudience = true,
         ValidAudience = authConfig.Audience,
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(authConfig.Secret)),
-        ClockSkew = TimeSpan.FromMinutes(5) // Allow 5 minute clock skew
+        
+        ValidateLifetime = true,
+        ClockSkew = TimeSpan.FromMinutes(5), // Allow 5 minute clock skew
+        
+        ValidateIssuerSigningKey = true,
+        // Signing keys are automatically fetched from JWKS endpoint via Authority
+        // ASP.NET Core caches keys and refreshes them periodically
+        
+        // Map 'sub' claim to NameIdentifier for consistency
+        NameClaimType = "sub",
+        RoleClaimType = "role"
     };
 
-    // Map JWT claims to ClaimTypes
-    options.MapInboundClaims = false; // Keep original claim names
+    // Keep original claim names (don't map to Microsoft schema)
+    options.MapInboundClaims = false;
 
     options.Events = new JwtBearerEvents
     {
@@ -52,6 +66,14 @@ builder.Services.AddAuthentication(options =>
             {
                 context.Response.Headers.Append("Token-Expired", "true");
             }
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            // Optional: Log successful authentication for debugging
+            var userId = context.Principal?.FindFirst("sub")?.Value;
+            var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+            logger.LogDebug("JWT validated successfully for user: {UserId}", userId);
             return Task.CompletedTask;
         }
     };

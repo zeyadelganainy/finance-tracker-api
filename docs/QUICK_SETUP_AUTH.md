@@ -5,6 +5,7 @@
 Your Finance Tracker API is now configured with:
 - **Demo User UUID**: `4960b4c0-3eb5-4df1-905e-efc6b7152dea`
 - **Supabase Project**: `sltityabtomzdavnlinv.supabase.co`
+- **Authentication Method**: Asymmetric JWT (RS256) with JWKS
 
 ---
 
@@ -15,18 +16,18 @@ Your Finance Tracker API is now configured with:
 Go to AWS App Runner Console and set these environment variables:
 
 ```bash
+# Supabase Configuration (NO SECRET NEEDED!)
+Auth__SupabaseUrl=https://sltityabtomzdavnlinv.supabase.co
 Auth__Issuer=https://sltityabtomzdavnlinv.supabase.co/auth/v1
 Auth__Audience=authenticated
-Auth__Secret=YOUR-SUPABASE-JWT-SECRET
 Auth__DemoUserId=4960b4c0-3eb5-4df1-905e-efc6b7152dea
 ```
 
-**Getting your JWT Secret**:
-1. Go to Supabase Dashboard: https://app.supabase.com
-2. Select your project
-3. **Settings** ? **API**
-4. Copy **JWT Secret** (NOT the anon or service_role keys!)
-5. Paste as `Auth__Secret`
+**Important Notes**:
+- ? **NO JWT Secret needed** - API uses JWKS endpoint for public key discovery
+- ? **NO service_role key needed** - API validates user access tokens only
+- ? Signing keys are automatically fetched from: `https://sltityabtomzdavnlinv.supabase.co/auth/v1/.well-known/jwks.json`
+- ? Keys are cached and refreshed automatically by ASP.NET Core
 
 ### 2. Apply Database Migration
 
@@ -128,6 +129,34 @@ curl https://ugwm6qnmpp.us-east-2.awsapprunner.com/accounts
 
 ---
 
+## ?? How JWT Validation Works
+
+### Asymmetric Authentication (RS256 + JWKS)
+
+The API uses **production-grade asymmetric JWT validation**:
+
+1. **Supabase signs tokens** with a private key (RS256)
+2. **API fetches public keys** from JWKS endpoint: `https://sltityabtomzdavnlinv.supabase.co/auth/v1/.well-known/jwks.json`
+3. **ASP.NET Core validates** tokens using public keys
+4. **Keys are cached** and automatically refreshed
+
+**Security Benefits**:
+- ? No shared secrets to manage
+- ? Private keys never leave Supabase
+- ? Automatic key rotation support
+- ? Industry-standard OpenID Connect
+
+### What Gets Validated
+
+For each request with `Authorization: Bearer <token>`:
+- ? **Signature** - Token was signed by Supabase (using JWKS public key)
+- ? **Issuer** - Token came from `https://sltityabtomzdavnlinv.supabase.co/auth/v1`
+- ? **Audience** - Token is for `authenticated` users
+- ? **Expiration** - Token is not expired (`exp` claim)
+- ? **Claims** - Extract `sub` (user ID), `email`, etc.
+
+---
+
 ## ?? Next Steps
 
 ### Apply Auth to Remaining Controllers
@@ -193,7 +222,7 @@ public class YourController : ControllerBase
 
 ## ?? Security Checklist
 
-- [x] JWT secret configured in environment variables
+- [x] JWT validation configured with JWKS
 - [x] Demo user UUID configured
 - [x] UserId columns added to all tables
 - [x] UserId indexes created
@@ -220,16 +249,19 @@ See `docs/AUTHENTICATION.md` for:
 
 ## ?? Troubleshooting
 
-### "Auth:Secret is required"
+### "Unable to obtain configuration from..."
 
-Set the `Auth__Secret` environment variable in App Runner with your Supabase JWT secret.
+The API is trying to fetch JWKS from Supabase. Check:
+- `Auth__Issuer` is set correctly in environment variables
+- Your API can reach `https://sltityabtomzdavnlinv.supabase.co` (no firewall blocking)
+- HTTPS is enabled (JWKS requires HTTPS)
 
 ### "User is not authenticated"
 
 Check that:
 - Token is included in `Authorization: Bearer <token>` header
 - Token is not expired (check `exp` claim)
-- JWT secret in API matches Supabase project
+- Token was issued by correct Supabase project
 
 ### Migration fails with "UserId cannot be null"
 
@@ -249,16 +281,18 @@ Verify:
 **What's Configured**:
 - ? Demo user UUID: `4960b4c0-3eb5-4df1-905e-efc6b7152dea`
 - ? Supabase issuer: `https://sltityabtomzdavnlinv.supabase.co/auth/v1`
-- ? JWT validation setup
+- ? JWT validation with JWKS (RS256 asymmetric)
+- ? Automatic public key discovery and caching
 - ? Per-user data isolation ready
 - ? Backfill script ready
 - ? RLS policies ready
 
 **What's Needed**:
-1. Set `Auth__Secret` in App Runner
-2. Deploy (migration will run automatically)
-3. Run backfill script in Supabase SQL Editor
-4. Run RLS policies script in Supabase SQL Editor
-5. Test with demo user token
+1. ~~Set `Auth__Secret` in App Runner~~ ? **NOT NEEDED** - Uses JWKS!
+2. Set `Auth__SupabaseUrl` and `Auth__Issuer` in App Runner
+3. Deploy (migration will run automatically)
+4. Run backfill script in Supabase SQL Editor
+5. Run RLS policies script in Supabase SQL Editor
+6. Test with demo user token
 
-**Your API will then enforce authentication and per-user data isolation!** ??
+**Your API now uses production-grade asymmetric JWT validation with automatic key management!** ??

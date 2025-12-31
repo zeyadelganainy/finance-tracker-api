@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Finance Tracker API uses **Supabase Authentication** with JWT Bearer tokens for user authentication. The API validates JWTs issued by Supabase and enforces per-user data isolation at the application level.
+The Finance Tracker API uses **Supabase Authentication** with JWT Bearer tokens for user authentication. The API validates JWTs issued by Supabase using **asymmetric cryptography (RS256)** and **JWKS (JSON Web Key Set)** for public key discovery.
 
 **Important**: The API does **NOT** implement login functionality - authentication is handled entirely by Supabase Auth. The web app authenticates users and sends the access token to the API.
 
@@ -14,11 +14,32 @@ The Finance Tracker API uses **Supabase Authentication** with JWT Bearer tokens 
 
 ```
 1. Web App ? Supabase Auth (login with email/password)
-2. Supabase ? Web App (returns access_token JWT)
+2. Supabase ? Web App (returns access_token JWT signed with RS256)
 3. Web App ? API (requests with Authorization: Bearer <access_token>)
-4. API ? Validates JWT signature and claims
-5. API ? Returns user-specific data filtered by auth.uid()
+4. API ? Fetches public keys from JWKS endpoint
+5. API ? Validates JWT signature using public keys
+6. API ? Returns user-specific data filtered by auth.uid()
 ```
+
+### Asymmetric JWT Validation (RS256 + JWKS)
+
+**Why Asymmetric?**
+- ? **Supabase signs** tokens with a **private key** (kept secure)
+- ? **API validates** tokens with **public keys** (from JWKS endpoint)
+- ? **No shared secrets** to manage or rotate
+- ? **Automatic key rotation** - API fetches latest keys from JWKS
+- ? **Industry standard** - OpenID Connect compliance
+
+**JWKS Endpoint**:
+```
+https://<PROJECT_REF>.supabase.co/auth/v1/.well-known/jwks.json
+```
+
+ASP.NET Core automatically:
+1. Fetches public keys from JWKS endpoint
+2. Caches keys for performance
+3. Refreshes keys when they change
+4. Validates JWT signatures using the correct key (by `kid` header)
 
 ### Demo Mode
 
@@ -35,21 +56,20 @@ The app supports a "Demo Mode" where:
 ### Required Environment Variables
 
 ```bash
-# Supabase JWT Settings (REQUIRED)
+# Supabase Configuration (NO SECRET NEEDED!)
+Auth__SupabaseUrl=https://YOUR-PROJECT.supabase.co
 Auth__Issuer=https://YOUR-PROJECT.supabase.co/auth/v1
 Auth__Audience=authenticated
-Auth__Secret=YOUR-SUPABASE-JWT-SECRET
 
 # Demo User ID (for data seeding/backfill)
 Auth__DemoUserId=uuid-of-demo-user-from-supabase
 ```
 
-### Getting Your JWT Secret
+### What You DON'T Need
 
-1. Go to Supabase Dashboard
-2. **Settings** ? **API**
-3. Copy **JWT Secret** (not the anon/service keys!)
-4. Set as `Auth__Secret` environment variable
+? **NO JWT Secret** - Uses JWKS public keys instead  
+? **NO service_role key** - Only validates user access tokens  
+? **NO manual key rotation** - Automatic via JWKS  
 
 **?? Security Note**: Never use the `service_role` key in your API. Always use user access tokens.
 
@@ -60,7 +80,7 @@ Auth__DemoUserId=uuid-of-demo-user-from-supabase
 ### JWT Validation
 
 The API validates:
-- ? Token signature (using JWT secret)
+- ? Token signature (using public key from JWKS)
 - ? Issuer matches Supabase project URL
 - ? Audience is "authenticated"
 - ? Token expiration (`exp` claim)
@@ -289,10 +309,10 @@ if (error) {
   return;
 }
 
-// 2. Get access token
+// 2. Get access token (signed with RS256 by Supabase)
 const accessToken = data.session.access_token;
 
-// 3. Call API with token
+// 3. Call API with token (API validates with JWKS public keys)
 const response = await fetch('https://api.example.com/accounts', {
   headers: {
     'Authorization': `Bearer ${accessToken}`,
@@ -333,22 +353,23 @@ supabase.auth.onAuthStateChange((event, session) => {
 
 ### ? DO
 
-- Use JWT access tokens (not service_role key)
-- Validate tokens on every request
+- Use JWT access tokens (signed by Supabase with RS256)
+- Validate tokens using JWKS public keys
 - Filter all queries by authenticated user ID
 - Enable RLS policies for defense-in-depth
 - Use HTTPS in production
-- Rotate JWT secrets periodically
+- Let Supabase handle key rotation
 - Set short token expiration (1 hour recommended)
 
 ### ? DON'T
 
 - Accept `user_id` from client requests
 - Use service_role key in API
-- Store JWT secret in source control
-- Allow unauthenticated access to user data
+- Use symmetric JWT secrets (HS256)
+- Store private keys in your API
 - Trust client-provided user identifiers
 - Skip token validation
+- Disable HTTPS for JWKS endpoint
 
 ---
 
@@ -357,8 +378,10 @@ supabase.auth.onAuthStateChange((event, session) => {
 ### Local Development
 
 ```bash
-# 1. Set auth secret
-export Auth__Secret="your-jwt-secret-here"
+# 1. Set auth configuration (NO SECRET NEEDED)
+export Auth__SupabaseUrl="https://your-project.supabase.co"
+export Auth__Issuer="https://your-project.supabase.co/auth/v1"
+export Auth__Audience="authenticated"
 
 # 2. Run API
 cd apps/api/FinanceTracker
@@ -394,11 +417,19 @@ public class AccountsControllerTests
 
 ## Troubleshooting
 
+### "Unable to obtain configuration from..."
+
+API can't fetch JWKS from Supabase. Check:
+- `Auth__Issuer` is set correctly
+- API can reach Supabase URL (no firewall blocking)
+- HTTPS is enabled (JWKS requires HTTPS)
+- Supabase project is active
+
 ### "User is not authenticated"
 
 - Token missing from `Authorization` header
 - Token expired (check `exp` claim)
-- Invalid token signature
+- Invalid token signature (check issuer matches)
 
 ### "Account not found" (but it exists)
 
@@ -411,10 +442,11 @@ public class AccountsControllerTests
 - Check policies are created correctly
 - Confirm `UserId` column is populated
 
-### "Auth:Secret is required"
+### JWKS fetch fails
 
-- Set `Auth__Secret` environment variable
-- For migrations, use temporary value
+- Check `Auth__Issuer` URL is correct
+- Verify HTTPS is enabled
+- Ensure `.well-known/jwks.json` endpoint is accessible
 
 ---
 
@@ -422,13 +454,15 @@ public class AccountsControllerTests
 
 When deploying to production:
 
-- [ ] Set `Auth__Issuer` to Supabase project URL
-- [ ] Set `Auth__Secret` from Supabase dashboard
+- [ ] Set `Auth__SupabaseUrl` environment variable
+- [ ] Set `Auth__Issuer` to Supabase auth URL
 - [ ] Set `Auth__Audience=authenticated`
+- [ ] ~~Set `Auth__Secret`~~ ? **NOT NEEDED** - Uses JWKS!
 - [ ] Run EF Core migration (`dotnet ef database update`)
 - [ ] Run demo user backfill script
 - [ ] Enable RLS policies
 - [ ] Test with real Supabase access token
+- [ ] Verify JWKS endpoint is reachable
 - [ ] Verify demo mode works
 - [ ] Update CORS origins for production domain
 
@@ -438,11 +472,12 @@ When deploying to production:
 
 | Component | Implementation |
 |-----------|---------------|
-| **Authentication** | Supabase Auth (JWT Bearer) |
+| **Authentication** | Supabase Auth (JWT Bearer with RS256) |
+| **Key Management** | JWKS (automatic public key discovery) |
 | **Authorization** | Claims-based (`[Authorize]` attribute) |
 | **User Context** | `ICurrentUserContext` service |
 | **Data Isolation** | Application queries + RLS policies |
 | **Demo Mode** | Demo user owns seeded data |
-| **Security** | JWT validation + per-user filtering + RLS |
+| **Security** | Asymmetric validation + per-user filtering + RLS |
 
-**The API never handles passwords or login - Supabase Auth does that!**
+**The API uses production-grade asymmetric JWT validation with automatic key management - no secrets to manage!** ??

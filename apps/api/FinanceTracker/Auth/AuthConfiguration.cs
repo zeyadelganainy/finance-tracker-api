@@ -8,7 +8,12 @@ public class AuthConfiguration
     public const string SectionName = "Auth";
 
     /// <summary>
-    /// Supabase JWT issuer (e.g., https://your-project.supabase.co/auth/v1)
+    /// Supabase project URL (e.g., https://your-project.supabase.co)
+    /// </summary>
+    public string SupabaseUrl { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Supabase JWT issuer/authority (e.g., https://your-project.supabase.co/auth/v1)
     /// </summary>
     public string Issuer { get; set; } = string.Empty;
 
@@ -16,11 +21,6 @@ public class AuthConfiguration
     /// Supabase JWT audience (typically "authenticated")
     /// </summary>
     public string Audience { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Supabase JWT secret used to validate token signatures
-    /// </summary>
-    public string Secret { get; set; } = string.Empty;
 
     /// <summary>
     /// Demo user ID for seeded data ownership
