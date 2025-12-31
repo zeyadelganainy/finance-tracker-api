@@ -1,0 +1,52 @@
+# Exclude unnecessary files from Docker build context
+# Reduces image size and build time
+
+# .NET build artifacts
+**/bin/
+**/obj/
+**/out/
+
+# Test projects
+**/*.Tests/
+
+# Development files
+**/.vs/
+**/.vscode/
+**/.idea/
+**/*.user
+**/*.suo
+
+# Documentation
+**/*.md
+**/docs/
+
+# Git
+**/.git/
+**/.gitignore
+**/.gitattributes
+
+# CI/CD
+**/.github/
+
+# Local development
+**/appsettings.Development.json
+**/appsettings.Local.json
+
+# Logs
+**/logs/
+**/*.log
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Node modules (if any)
+**/node_modules/
+
+# NuGet packages
+**/*.nupkg
+
+# Database files
+**/*.db
+**/*.db-shm
+**/*.db-wal

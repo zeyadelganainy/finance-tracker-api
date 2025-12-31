@@ -8,6 +8,24 @@ A monorepo for personal finance tracking. Contains a REST API backend and web fr
 
 ---
 
+## 🚀 Live Demo
+
+**Production API**: [https://ugwm6qnmpp.us-east-2.awsapprunner.com](https://ugwm6qnmpp.us-east-2.awsapprunner.com)
+
+**Try it now**:
+- Health Check: [/health](https://ugwm6qnmpp.us-east-2.awsapprunner.com/health)
+- Database Status: [/health/ready](https://ugwm6qnmpp.us-east-2.awsapprunner.com/health/ready)
+- Categories: [/categories](https://ugwm6qnmpp.us-east-2.awsapprunner.com/categories)
+- Transactions: [/transactions](https://ugwm6qnmpp.us-east-2.awsapprunner.com/transactions)
+
+**Deployment**:
+- Platform: AWS App Runner
+- Region: us-east-2 (Ohio)
+- Auto-scaling: 1-3 instances
+- HTTPS: Automatic SSL/TLS
+
+---
+
 ## Repository Structure
 
 ```
@@ -612,7 +630,42 @@ GitHub Actions workflow runs on every push and pull request:
 
 ## Production Deployment
 
-### Docker
+### AWS App Runner (Recommended)
+
+Deploy the Finance Tracker API to AWS App Runner with automatic scaling and managed infrastructure.
+
+**Quick Deploy**:
+```bash
+# 1. Build and push to ECR
+cd apps/api
+docker build -t finance-tracker-api:latest .
+
+# 2. Deploy to App Runner
+# See docs/QUICK_DEPLOY.md for complete instructions
+```
+
+**Features**:
+- Automatic HTTPS with AWS-managed certificates
+- Built-in auto-scaling (1-10 instances)
+- Health checks with `/health` endpoint
+- CloudWatch logging and metrics
+- Zero-downtime deployments
+
+**Documentation**:
+- **Complete Guide**: [`docs/AWS_APP_RUNNER_DEPLOYMENT.md`](docs/AWS_APP_RUNNER_DEPLOYMENT.md) - Comprehensive 50-page guide
+- **Quick Deploy**: [`docs/QUICK_DEPLOY.md`](docs/QUICK_DEPLOY.md) - 5-minute reference
+- **Checklist**: [`docs/DEPLOYMENT_CHECKLIST.md`](docs/DEPLOYMENT_CHECKLIST.md) - Pre/post deployment tasks
+- **Summary**: [`docs/AWS_DEPLOYMENT_SUMMARY.md`](docs/AWS_DEPLOYMENT_SUMMARY.md) - Overview and features
+
+**CI/CD**: Automated deployment on push to `main` (`.github/workflows/deploy-apprunner.yml`)
+
+**Cost**: ~$56-60/month for always-on service with 1 vCPU and 2GB memory
+
+---
+
+### Docker (Local/Self-Hosted)
+
+For local development or self-hosted deployments:
 
 ```bash
 # Build image (from repository root)
@@ -628,120 +681,3 @@ docker run -d -p 8080:8080 \
 # Verify health
 curl http://localhost:8080/health
 curl http://localhost:8080/health/ready
-```
-
-### Kubernetes
-
-Example deployment with health checks:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: finance-tracker-api
-spec:
-  replicas: 3
-  template:
-    spec:
-      containers:
-      - name: api
-        image: finance-tracker-api:latest
-        ports:
-        - containerPort: 8080
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8080
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health/ready
-            port: 8080
-          initialDelaySeconds: 5
-          periodSeconds: 5
-        env:
-        - name: ASPNETCORE_ENVIRONMENT
-          value: "Production"
-        - name: ConnectionStrings__Default
-          valueFrom:
-            secretKeyRef:
-              name: db-secret
-              key: connection-string
-```
-
----
-
-## Configuration
-
-### Environment Variables
-
-**Required:**
-- `ASPNETCORE_ENVIRONMENT` - Environment name (Production, Development)
-- `ConnectionStrings__Default` - PostgreSQL connection string
-
-**Optional:**
-- `Cors__AllowedOrigins__0` - Allowed CORS origins (add multiple with __1, __2, etc.)
-- `Logging__LogLevel__Default` - Logging level (Information, Warning, Error)
-
-**Example:**
-```bash
-export ASPNETCORE_ENVIRONMENT=Production
-export ConnectionStrings__Default="Host=prod-host;Database=finance;Username=user;Password=pass;SSL Mode=Require"
-export Cors__AllowedOrigins__0="https://finance-app.com"
-```
-
-### Database Connection String Format
-
-```
-Host=hostname;Database=dbname;Username=user;Password=pass;SSL Mode=Require;Trust Server Certificate=true
-```
-
-Use managed secrets (Azure Key Vault, AWS Secrets Manager, Kubernetes Secrets) in production.
-
----
-
-## Project Structure
-
-```
-apps/
-├── api/
-│   ├── FinanceTracker/
-│   │   ├── Controllers/           # API endpoints
-│   │   ├── Models/               # Entity models
-│   │   ├── Contracts/            # Request/response DTOs
-│   │   ├── Data/                 # EF Core DbContext
-│   │   ├── Middleware/           # Request logging, exception handling
-│   │   ├── Migrations/           # Database migrations
-│   │   └── Program.cs            # Application startup
-│   └── FinanceTracker.Tests/
-│       ├── *ControllerTests.cs   # Integration tests
-│       ├── ValidationTests.cs    # Input validation tests
-│       └── ExceptionHandlingTests.cs  # Error handling tests
-└── web/                          # Frontend (coming soon)
-```
-
----
-
-## Roadmap
-
-- **Authentication & Authorization** - JWT-based user authentication with role-based access control
-- **Multi-User Support** - User isolation and data privacy
-- **Recurring Transactions** - Automated transaction generation for recurring income/expenses
-- **Budget Management** - Set and track budgets by category with alerts
-- **Export Functionality** - CSV/PDF export for transactions and reports
-- **Frontend Dashboard** - React-based UI for data visualization
-- **Mobile API Support** - Optimized endpoints for mobile apps
-
----
-
-## License
-
-MIT License
-
----
-
-## Contact
-
-- **GitHub:** [zeyadelganainy](https://github.com/zeyadelganainy)
-- **Repository:** [finance-tracker-api](https://github.com/zeyadelganainy/finance-tracker-api)
