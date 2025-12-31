@@ -87,17 +87,55 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 
 // Configure CORS policy for frontend
-var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-    ?? Array.Empty<string>();
+// Priority: Environment variable > appsettings.json
+var corsOriginsEnv = builder.Configuration["CORS_ALLOWED_ORIGINS"];
+string[] allowedOrigins;
+
+if (!string.IsNullOrWhiteSpace(corsOriginsEnv))
+{
+    // Parse comma-separated list from environment variable
+    allowedOrigins = corsOriginsEnv
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .ToArray();
+}
+else
+{
+    // Fallback to appsettings.json
+    allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+        ?? Array.Empty<string>();
+}
+
+// Security: Reject wildcard origin in production
+if (builder.Environment.IsProduction() && allowedOrigins.Contains("*"))
+{
+    throw new InvalidOperationException(
+        "Wildcard CORS origin (*) is not allowed in production. " +
+        "Set CORS_ALLOWED_ORIGINS environment variable with specific origins (comma-separated).");
+}
+
+// Log configured origins for debugging
+var logger = LoggerFactory.Create(config => config.AddConsole()).CreateLogger<Program>();
+logger.LogInformation("CORS configured with {Count} allowed origin(s): {Origins}", 
+    allowedOrigins.Length, 
+    string.Join(", ", allowedOrigins));
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("Frontend", policy =>
+    options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins)
+                  .WithHeaders("Authorization", "Content-Type", "Accept")
+                  .WithMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
+                  .AllowCredentials();
+        }
+        else
+        {
+            // No origins configured - allow nothing (secure default)
+            logger.LogWarning("No CORS origins configured. All cross-origin requests will be blocked.");
+        }
     });
 });
 
@@ -143,17 +181,17 @@ else if (builder.Environment.EnvironmentName != "Test")
 
 var app = builder.Build();
 
-// Apply CORS policy globally
-app.UseCors("Frontend");
+// CORS MUST be before Authentication/Authorization for preflight requests
+app.UseCors("AllowFrontend");
 
-// Request logging middleware (logs all requests)
+// Request logging middleware (logs all requests including OPTIONS)
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-// Authentication & Authorization middleware (MUST be before exception handling for proper 401/403)
+// Authentication & Authorization middleware (MUST be in this order)
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Global exception handling middleware
+// Global exception handling middleware (AFTER auth for proper 401/403)
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 // Map controllers

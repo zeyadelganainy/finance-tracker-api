@@ -1,10 +1,5 @@
 import { supabase } from './supabaseClient';
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string | undefined;
-
-if (!API_BASE_URL) {
-  throw new Error('Missing VITE_API_BASE_URL environment variable.');
-}
+import { env } from './env';
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -28,7 +23,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     cache: 'no-store',
   };
 
-  const response = await fetch(`${API_BASE_URL}${path}`, fetchOptions);
+  const response = await fetch(`${env.apiBaseUrl}${path}`, fetchOptions);
 
   if (response.status === 401) {
     await supabase.auth.signOut();

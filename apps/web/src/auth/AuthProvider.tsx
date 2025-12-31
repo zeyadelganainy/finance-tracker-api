@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 import { apiFetch } from '../lib/apiClient';
+import { env } from '../lib/env';
 
 interface AuthContextValue {
   user: User | null;
@@ -19,11 +20,6 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
-
-const demoEmail = (import.meta as any).env.VITE_DEMO_EMAIL as string | undefined;
-const demoPassword = (import.meta as any).env.VITE_DEMO_PASSWORD as string | undefined;
-const demoEnabled = Boolean(demoEmail && demoPassword);
-const demoError = !demoEnabled ? 'Demo credentials are not configured.' : undefined;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -114,13 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signInAsDemo = async () => {
-    if (!demoEnabled || !demoEmail || !demoPassword) {
-      throw new Error(demoError || 'Demo mode is not configured.');
+    if (!env.isDemoModeEnabled) {
+      throw new Error('Demo mode is not configured. Please set VITE_DEMO_EMAIL and VITE_DEMO_PASSWORD.');
     }
     setIsLoading(true);
     const { error } = await supabase.auth.signInWithPassword({
-      email: demoEmail,
-      password: demoPassword,
+      email: env.demoEmail,
+      password: env.demoPassword,
     });
     if (error) {
       setIsLoading(false);
@@ -140,8 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signUp,
     signOut,
     signInAsDemo,
-    demoEnabled,
-    demoError,
+    demoEnabled: env.isDemoModeEnabled,
+    demoError: !env.isDemoModeEnabled ? 'Demo credentials are not configured.' : undefined,
   }), [user, session, isLoading]);
 
   return (
