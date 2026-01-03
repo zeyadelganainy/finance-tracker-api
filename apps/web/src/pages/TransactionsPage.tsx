@@ -31,7 +31,7 @@ const normalizeDateString = (value: string) => {
   return tIndex === -1 ? value : value.slice(0, tIndex);
 };
 
-const parseTxnDate = (dateStr: string) => {a
+const parseTxnDate = (dateStr: string) => {
   const normalized = normalizeDateString(dateStr);
   const parsedDate = parse(normalized, 'yyyy-MM-dd', new Date());
   if (isNaN(parsedDate.getTime())) {
