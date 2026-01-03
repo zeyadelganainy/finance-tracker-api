@@ -37,6 +37,9 @@ const parseTxnDate = (dateStr: string) => {
   return parsedDate;
 };
 
+const isTransactionsQuery = (query: { queryKey?: readonly unknown[] }) =>
+  Array.isArray(query.queryKey) && query.queryKey[0] === 'transactions';
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
