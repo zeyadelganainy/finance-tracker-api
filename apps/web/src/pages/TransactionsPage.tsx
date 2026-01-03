@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
 import { Transaction, PagedResponse, Category, CreateTransactionRequest } from '../types/api';
@@ -22,6 +22,38 @@ interface TransactionFilters {
   categoryId?: string;
 }
 
+const normalizeDateString = (value: string) => {
+  if (!value) return value;
+  const tIndex = value.indexOf('T');
+  return tIndex === -1 ? value : value.slice(0, tIndex);
+};
+
+const parseTxnDate = (dateStr: string) => {
+  const normalized = normalizeDateString(dateStr);
+  const parsedDate = parse(normalized, 'yyyy-MM-dd', new Date());
+  if (isNaN(parsedDate.getTime())) {
+    return new Date(0); // Stable fallback to keep sort deterministic
+  }
+  return parsedDate;
+};
+
+const isTransactionsQuery = (query: { queryKey?: readonly unknown[] }) =>
+  Array.isArray(query.queryKey) && query.queryKey[0] === 'transactions';
+
+const ensureTransactionCategory = (tx: Transaction): Transaction => ({
+  ...tx,
+  category: tx.category ?? {
+    id: (tx as any).categoryId ?? 0,
+    name: (tx as any).categoryName ?? 'Uncategorized',
+  },
+});
+
+const compareTransactions = (a: Transaction, b: Transaction) => {
+  const dateDiff = parseTxnDate(b.date).getTime() - parseTxnDate(a.date).getTime();
+  if (dateDiff !== 0) return dateDiff; // newest first
+  return b.id - a.id; // tie-breaker by id desc
+};
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
@@ -35,13 +67,13 @@ export function TransactionsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   
-  // Fetch transactions with filters
+  // Fetch ALL transactions (no pagination to backend, paginate locally after sorting/filtering)
   const { data: transactionsData, isLoading: loadingTransactions } = useQuery({
-    queryKey: ['transactions', filters],
+    queryKey: ['transactions', filters.from, filters.to],
     queryFn: async () => {
       const params = new URLSearchParams({
-        page: filters.page.toString(),
-        pageSize: filters.pageSize.toString(),
+        page: '1',
+        pageSize: '1000', // large batch; client paginates
       });
       if (filters.from) params.append('from', filters.from);
       if (filters.to) params.append('to', filters.to);
@@ -59,9 +91,28 @@ export function TransactionsPage() {
   
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiFetch(`/transactions/${id}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    mutationFn: (id: number) => {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug(`[DeleteTransaction] id=${id}`);
+      }
+      return apiFetch(`/transactions/${id}`, { method: 'DELETE' });
+    },
+    onSuccess: (_data, id) => {
+      queryClient.setQueriesData<PagedResponse<Transaction>>(
+        { predicate: isTransactionsQuery },
+        (existing) => {
+          if (!existing || !Array.isArray(existing.items)) return existing;
+          const updatedItems = existing.items.filter((t) => t.id !== id);
+          const nextTotal = typeof existing.total === 'number' ? Math.max(0, existing.total - 1) : existing.total;
+          return {
+            ...existing,
+            items: updatedItems,
+            total: nextTotal,
+          };
+        }
+      );
+      queryClient.invalidateQueries({ predicate: isTransactionsQuery });
       showToast('Transaction deleted successfully', 'success');
       setDeleteConfirm(null);
     },
@@ -82,7 +133,7 @@ export function TransactionsPage() {
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      queryClient.invalidateQueries({ predicate: isTransactionsQuery });
       showToast('Transaction updated successfully', 'success');
       setEditingId(null);
     },
@@ -109,14 +160,35 @@ export function TransactionsPage() {
     });
   };
   
-  const filteredByCategory = filters.categoryId
-    ? transactionsData?.items.filter((t) => t.category.id.toString() === filters.categoryId)
-    : transactionsData?.items;
-  
-  const totalPages = transactionsData
-    ? Math.ceil(transactionsData.total / filters.pageSize)
-    : 0;
-    
+  // Normalize transactions (handle different API response shapes)
+  const allTransactions = (transactionsData?.items ?? []).map((t: any) => {
+    const categoryId = t.category?.id ?? t.categoryId ?? 0;
+    const categoryName = t.category?.name ?? t.categoryName ?? 'Uncategorized';
+    return {
+      ...t,
+      category: {
+        id: categoryId,
+        name: categoryName,
+      },
+    } as Transaction;
+  });
+
+  // Sort newest first (today's transactions at top of page 1)
+  const sortedTransactions = [...allTransactions].sort(compareTransactions);
+
+  // Filter by category if needed
+  const filteredTransactions = filters.categoryId
+    ? sortedTransactions.filter((t) => t.category.id.toString() === filters.categoryId)
+    : sortedTransactions;
+
+  // Apply client-side pagination AFTER sorting and filtering
+  const startIndex = (filters.page - 1) * filters.pageSize;
+  const endIndex = startIndex + filters.pageSize;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+  // Total based on filtered array (not API response)
+  const totalFiltered = filteredTransactions.length;
+  const totalPages = Math.ceil(totalFiltered / filters.pageSize);
   const hasFilters = filters.from || filters.to || filters.categoryId;
   
   return (
@@ -128,7 +200,7 @@ export function TransactionsPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
               <p className="mt-2 text-sm text-gray-600">
-                {transactionsData?.total || 0} total transactions
+                {totalFiltered} total transactions
               </p>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
@@ -195,12 +267,12 @@ export function TransactionsPage() {
           <Card>
             <TableSkeleton rows={10} />
           </Card>
-        ) : filteredByCategory && filteredByCategory.length > 0 ? (
+        ) : paginatedTransactions && paginatedTransactions.length > 0 ? (
           <>
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50 sticky top-16 z-10">
+                  <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                         Date
@@ -220,7 +292,7 @@ export function TransactionsPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredByCategory.map((transaction) => (
+                    {paginatedTransactions.map((transaction) => (
                       <TransactionRow
                         key={transaction.id}
                         transaction={transaction}
@@ -241,9 +313,9 @@ export function TransactionsPage() {
             {/* Pagination */}
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{(filters.page - 1) * filters.pageSize + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(filters.page * filters.pageSize, transactionsData?.total || 0)}</span> of{' '}
-                <span className="font-medium">{transactionsData?.total || 0}</span> results
+                Showing <span className="font-medium">{totalFiltered === 0 ? 0 : startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + filters.pageSize, totalFiltered)}</span> of{' '}
+                <span className="font-medium">{totalFiltered}</span> results
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -299,7 +371,7 @@ export function TransactionsPage() {
             onClose={() => setShowCreateModal(false)}
             onSuccess={() => {
               setShowCreateModal(false);
-              queryClient.invalidateQueries({ queryKey: ['transactions'] });
+              queryClient.invalidateQueries({ predicate: isTransactionsQuery });
             }}
           />
         )}
@@ -445,7 +517,7 @@ function TransactionRow({
   return (
     <tr className="hover:bg-gray-50 transition-colors">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-        {format(parseISO(transaction.date), 'MMM dd, yyyy')}
+        {format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}
       </td>
       <td className="px-6 py-4 text-sm text-gray-900">
         {transaction.description || <span className="text-gray-400 italic">No description</span>}
@@ -493,9 +565,10 @@ interface CreateTransactionModalProps {
 
 function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransactionModalProps) {
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'),
     categoryId: categories[0]?.id.toString() || '',
     description: '',
   });
@@ -506,9 +579,29 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (created) => {
+      const normalizedCreated = ensureTransactionCategory(created as Transaction);
+      queryClient.setQueriesData<PagedResponse<Transaction>>(
+        { predicate: isTransactionsQuery },
+        (existing) => {
+          if (!existing || !Array.isArray(existing.items)) return existing;
+          const updatedItems = [normalizedCreated, ...existing.items];
+          const sortedItems = [...updatedItems].sort(compareTransactions);
+          const nextTotal = typeof existing.total === 'number' ? existing.total + 1 : existing.total;
+          return {
+            ...existing,
+            items: sortedItems,
+            total: nextTotal,
+          };
+        }
+      );
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug(`[CreateTransaction] raw date=${created?.date}`);
+      }
       showToast('Transaction created successfully', 'success');
       onSuccess();
+      queryClient.invalidateQueries({ predicate: isTransactionsQuery });
     },
     onError: (error: Error) => {
       showToast(error.message, 'error');

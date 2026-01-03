@@ -6,6 +6,7 @@ using FinanceTracker.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 
 namespace FinanceTracker.Controllers;
 
@@ -16,11 +17,17 @@ public class TransactionsController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly ICurrentUserContext _currentUser;
+    private readonly IHostEnvironment _environment;
+    private readonly ILogger<TransactionsController> _logger;
+    private readonly bool _enableDiagnostics;
 
-    public TransactionsController(AppDbContext db, ICurrentUserContext currentUser)
+    public TransactionsController(AppDbContext db, ICurrentUserContext currentUser, IHostEnvironment environment, ILogger<TransactionsController> logger)
     {
         _db = db;
         _currentUser = currentUser;
+        _environment = environment;
+        _logger = logger;
+        _enableDiagnostics = environment.IsDevelopment();
     }
 
     // POST /transactions
@@ -78,26 +85,28 @@ public class TransactionsController : ControllerBase
     {
         var userId = Guid.Parse(_currentUser.UserId);
 
-        // Cap page size to 200
-        var pageSize = Math.Min(paging.PageSize, 200);
-        var page = Math.Max(paging.Page, 1);
+        var page = paging.Page < 1 ? 1 : paging.Page;
+        var pageSize = Math.Clamp(paging.PageSize, 1, 200);
 
         var q = _db.Transactions
             .AsNoTracking()
-            .Where(t => t.UserId == userId); // Filter by user
+            .Where(t => t.UserId == userId);
 
-        // Apply date filters
-        if (from is not null) q = q.Where(t => t.Date >= from.Value);
-        if (to is not null) q = q.Where(t => t.Date <= to.Value);
+        if (from is not null)
+        {
+            query = query.Where(t => t.Date >= from.Value);
+        }
 
-        // Get total count before pagination
-        var total = await q.CountAsync();
+        if (to is not null)
+        {
+            query = query.Where(t => t.Date <= to.Value);
+        }
 
-        // Apply sorting
-        q = ApplySorting(q, paging.Sort);
+        var total = await query.CountAsync();
 
-        // Apply pagination
-        var rows = await q
+        var rows = await query
+            .OrderByDescending(t => t.Date)
+            .ThenByDescending(t => t.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(t => new TransactionResponse(
@@ -108,6 +117,19 @@ public class TransactionsController : ControllerBase
                 new TransactionCategoryDto(t.Category!.Id, t.Category!.Name)
             ))
             .ToListAsync();
+
+        if (_enableDiagnostics)
+        {
+            var first = rows.FirstOrDefault();
+            var last = rows.LastOrDefault();
+            _logger.LogInformation(
+                "Transactions page diagnostics: count={Count}, firstId={FirstId}, firstDate={FirstDate}, lastId={LastId}, lastDate={LastDate}",
+                rows.Count,
+                first?.Id,
+                first?.Date,
+                last?.Id,
+                last?.Date);
+        }
 
         var response = new PagedResponse<TransactionResponse>(
             rows,

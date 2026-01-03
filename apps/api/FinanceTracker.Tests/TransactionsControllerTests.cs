@@ -323,6 +323,263 @@ public class TransactionsControllerTests : IClassFixture<CustomWebApplicationFac
         Assert.Equal(15, allIds.Distinct().Count());
     }
 
+<<<<<<< Updated upstream
+=======
+    [Fact]
+    public async Task GetTransactions_PaginationAcrossPagesIsStable()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        var ids = new List<int>();
+
+        for (int i = 1; i <= 12; i++)
+        {
+            ids.Add(await SeedTransactionAndReturnId(categoryId, -10m * i, new DateOnly(2025, 1, i), $"Transaction {i}"));
+        }
+
+        var newestFive = ids.OrderByDescending(id => id).Take(5).OrderByDescending(id => id).ToList();
+        var nextFive = ids.OrderByDescending(id => id).Skip(5).Take(5).OrderByDescending(id => id).ToList();
+
+        // Act
+        var page1Response = await _client.GetAsync("/transactions?page=1&pageSize=5");
+        var page2Response = await _client.GetAsync("/transactions?page=2&pageSize=5");
+
+        // Assert page 1
+        Assert.Equal(HttpStatusCode.OK, page1Response.StatusCode);
+        var page1 = await page1Response.Content.ReadFromJsonAsync<PagedResponse<TransactionResponse>>();
+        Assert.NotNull(page1);
+        Assert.Equal(5, page1.Items.Count);
+        Assert.Equal(newestFive, page1.Items.Select(t => t.Id).ToList());
+
+        // Assert page 2
+        Assert.Equal(HttpStatusCode.OK, page2Response.StatusCode);
+        var page2 = await page2Response.Content.ReadFromJsonAsync<PagedResponse<TransactionResponse>>();
+        Assert.NotNull(page2);
+        Assert.Equal(5, page2.Items.Count);
+        Assert.Equal(nextFive, page2.Items.Select(t => t.Id).ToList());
+
+        // Ensure no overlap between pages
+        var combined = page1.Items.Select(t => t.Id).Concat(page2.Items.Select(t => t.Id)).ToList();
+        Assert.Equal(combined.Count, combined.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task GetTransactions_WhenPageBeyondTotal_ReturnsEmptyList()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        for (int i = 1; i <= 3; i++)
+        {
+            await SeedTransaction(categoryId, -10m * i, new DateOnly(2025, 1, i), $"Transaction {i}");
+        }
+
+        // Act
+        var response = await _client.GetAsync("/transactions?page=2&pageSize=5");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<PagedResponse<TransactionResponse>>();
+        Assert.NotNull(result);
+        Assert.Equal(0, result.Items.Count);
+        Assert.Equal(3, result.Total);
+        Assert.Equal(2, result.Page);
+    }
+
+    [Fact]
+    public async Task GetById_WithValidId_ReturnsTransaction()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        var transactionId = await SeedTransactionAndReturnId(categoryId, -100m, new DateOnly(2025, 1, 15), "Lunch");
+
+        // Act
+        var response = await _client.GetAsync($"/transactions/{transactionId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<TransactionResponse>();
+        Assert.NotNull(result);
+        Assert.Equal(transactionId, result.Id);
+        Assert.Equal(-100m, result.Amount);
+        Assert.Equal(new DateOnly(2025, 1, 15), result.Date);
+        Assert.Equal("Lunch", result.Description);
+    }
+
+    [Fact]
+    public async Task GetById_WithNonExistentId_ReturnsNotFound()
+    {
+        // Arrange
+        await ClearDatabase();
+
+        // Act
+        var response = await _client.GetAsync("/transactions/999999");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WithValidData_UpdatesTransaction()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId1 = await SeedCategory("Food");
+        var categoryId2 = await SeedCategory("Transport");
+        var transactionId = await SeedTransactionAndReturnId(categoryId1, -100m, new DateOnly(2025, 1, 15), "Lunch");
+
+        var updateRequest = new
+        {
+            Amount = -150m,
+            Date = new DateOnly(2025, 1, 20),
+            CategoryId = categoryId2,
+            Description = "Updated description"
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/transactions/{transactionId}", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<TransactionResponse>();
+        Assert.NotNull(result);
+        Assert.Equal(transactionId, result.Id);
+        Assert.Equal(-150m, result.Amount);
+        Assert.Equal(new DateOnly(2025, 1, 20), result.Date);
+        Assert.Equal("Updated description", result.Description);
+        Assert.Equal(categoryId2, result.Category.Id);
+        Assert.Equal("Transport", result.Category.Name);
+    }
+
+    [Fact]
+    public async Task Update_WithNonExistentId_ReturnsNotFound()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        
+        var updateRequest = new
+        {
+            Amount = -150m,
+            Date = new DateOnly(2025, 1, 20),
+            CategoryId = categoryId,
+            Description = "Test"
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync("/transactions/999999", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WithZeroAmount_ReturnsBadRequest()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        var transactionId = await SeedTransactionAndReturnId(categoryId, -100m, new DateOnly(2025, 1, 15), "Lunch");
+
+        var updateRequest = new
+        {
+            Amount = 0m,
+            Date = new DateOnly(2025, 1, 20),
+            CategoryId = categoryId,
+            Description = "Test"
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/transactions/{transactionId}", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_WithInvalidCategory_ReturnsBadRequest()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        var transactionId = await SeedTransactionAndReturnId(categoryId, -100m, new DateOnly(2025, 1, 15), "Lunch");
+
+        var updateRequest = new
+        {
+            Amount = -150m,
+            Date = new DateOnly(2025, 1, 20),
+            CategoryId = 999999,
+            Description = "Test"
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/transactions/{transactionId}", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_RemovesDescription_WhenSetToNull()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        var transactionId = await SeedTransactionAndReturnId(categoryId, -100m, new DateOnly(2025, 1, 15), "Original description");
+
+        var updateRequest = new
+        {
+            Amount = -100m,
+            Date = new DateOnly(2025, 1, 15),
+            CategoryId = categoryId,
+            Description = (string?)null
+        };
+
+        // Act
+        var response = await _client.PutAsJsonAsync($"/transactions/{transactionId}", updateRequest);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<TransactionResponse>();
+        Assert.NotNull(result);
+        Assert.Null(result.Description);
+    }
+
+    [Fact]
+    public async Task Delete_WithValidId_DeletesTransaction()
+    {
+        // Arrange
+        await ClearDatabase();
+        var categoryId = await SeedCategory("Food");
+        var transactionId = await SeedTransactionAndReturnId(categoryId, -100m, new DateOnly(2025, 1, 15), "Lunch");
+
+        // Act
+        var response = await _client.DeleteAsync($"/transactions/{transactionId}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+
+        // Verify it's deleted
+        var getResponse = await _client.GetAsync($"/transactions/{transactionId}");
+        Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task Delete_WithNonExistentId_ReturnsNotFound()
+    {
+        // Arrange
+        await ClearDatabase();
+
+        // Act
+        var response = await _client.DeleteAsync("/transactions/999999");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+>>>>>>> Stashed changes
     private async Task ClearDatabase()
     {
         using var scope = _factory.Services.CreateScope();
