@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, parse } from 'date-fns';
 import { apiFetch } from '../lib/apiClient';
 import { AccountDetail, AccountSnapshot, UpsertSnapshotRequest, UpdateAccountRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
@@ -247,11 +247,11 @@ export function AccountDetailPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {(snapshots || [])
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .sort((a, b) => parse(b.date, 'yyyy-MM-dd', new Date()).getTime() - parse(a.date, 'yyyy-MM-dd', new Date()).getTime())
                   .map((snapshot) => (
                     <tr key={snapshot.date} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {format(parseISO(snapshot.date), 'MMM dd, yyyy')}
+                        {format(parse(snapshot.date, 'yyyy-MM-dd', new Date()), 'MMM dd, yyyy')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                         <span className="font-semibold text-gray-900">

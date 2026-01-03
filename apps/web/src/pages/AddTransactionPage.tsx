@@ -1,5 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { format } from 'date-fns';
 import { apiFetch } from '../lib/apiClient';
 import { useCategories } from '../hooks/useCategories';
 
@@ -16,7 +17,7 @@ export function AddTransactionPage() {
   
   const [formData, setFormData] = useState<FormData>({
     amount: '',
-    date: new Date().toISOString().split('T')[0], // Today's date in YYYY-MM-DD
+    date: format(new Date(), 'yyyy-MM-dd'), // Today's date in YYYY-MM-DD (local time, no timezone shift)
     categoryId: '',
     description: '',
   });

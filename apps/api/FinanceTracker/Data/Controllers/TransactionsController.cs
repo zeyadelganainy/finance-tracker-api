@@ -69,7 +69,7 @@ public class TransactionsController : ControllerBase
         return Created($"/transactions/{tx.Id}", response);
     }
 
-    // GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=50&sort=-date
+    // GET /transactions?from=YYYY-MM-DD&to=YYYY-MM-DD&page=1&pageSize=50
     [HttpGet]
     public async Task<ActionResult<PagedResponse<TransactionResponse>>> Get(
         [FromQuery] DateOnly? from,
@@ -78,26 +78,28 @@ public class TransactionsController : ControllerBase
     {
         var userId = Guid.Parse(_currentUser.UserId);
 
-        // Cap page size to 200
-        var pageSize = Math.Min(paging.PageSize, 200);
-        var page = Math.Max(paging.Page, 1);
+        var page = paging.Page < 1 ? 1 : paging.Page;
+        var pageSize = Math.Clamp(paging.PageSize, 1, 200);
 
-        var q = _db.Transactions
+        var query = _db.Transactions
             .AsNoTracking()
-            .Where(t => t.UserId == userId); // Filter by user
+            .Where(t => t.UserId == userId);
 
-        // Apply date filters
-        if (from is not null) q = q.Where(t => t.Date >= from.Value);
-        if (to is not null) q = q.Where(t => t.Date <= to.Value);
+        if (from is not null)
+        {
+            query = query.Where(t => t.Date >= from.Value);
+        }
 
-        // Get total count before pagination
-        var total = await q.CountAsync();
+        if (to is not null)
+        {
+            query = query.Where(t => t.Date <= to.Value);
+        }
 
-        // Apply sorting
-        q = ApplySorting(q, paging.Sort);
+        var total = await query.CountAsync();
 
-        // Apply pagination
-        var rows = await q
+        var rows = await query
+            .OrderByDescending(t => t.Date)
+            .ThenByDescending(t => t.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(t => new TransactionResponse(
@@ -119,15 +121,97 @@ public class TransactionsController : ControllerBase
         return Ok(response);
     }
 
-    private static IQueryable<Transaction> ApplySorting(IQueryable<Transaction> query, string sort)
+    // GET /transactions/{id}
+    [HttpGet("{id}")]
+    public async Task<ActionResult<TransactionResponse>> GetById(int id)
     {
-        return sort?.ToLowerInvariant() switch
-        {
-            "date" => query.OrderBy(t => t.Date).ThenBy(t => t.Id),
-            "-date" => query.OrderByDescending(t => t.Date).ThenByDescending(t => t.Id),
-            "amount" => query.OrderBy(t => t.Amount).ThenBy(t => t.Id),
-            "-amount" => query.OrderByDescending(t => t.Amount).ThenByDescending(t => t.Id),
-            _ => query.OrderByDescending(t => t.Date).ThenByDescending(t => t.Id) // Default: -date
-        };
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        var transaction = await _db.Transactions
+            .AsNoTracking()
+            .Include(t => t.Category)
+            .Where(t => t.Id == id && t.UserId == userId)
+            .Select(t => new TransactionResponse(
+                t.Id,
+                t.Amount,
+                t.Date,
+                t.Description,
+                new TransactionCategoryDto(t.Category!.Id, t.Category!.Name)
+            ))
+            .SingleOrDefaultAsync();
+
+        if (transaction == null)
+            return NotFound();
+
+        return Ok(transaction);
+    }
+
+    // PUT /transactions/{id}
+    [HttpPut("{id}")]
+    public async Task<ActionResult<TransactionResponse>> Update(int id, UpdateTransactionRequest req)
+    {
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Find transaction and verify ownership
+        var transaction = await _db.Transactions
+            .Where(t => t.Id == id && t.UserId == userId)
+            .SingleOrDefaultAsync();
+
+        if (transaction == null)
+            return NotFound();
+
+        // Validate amount
+        if (req.Amount == 0)
+            throw new ArgumentException("Amount cannot be 0.");
+
+        // Verify category belongs to current user
+        var categoryExists = await _db.Categories
+            .AnyAsync(c => c.Id == req.CategoryId && c.UserId == userId);
+        if (!categoryExists)
+            throw new ArgumentException("CategoryId is invalid or does not belong to you.");
+
+        // Update fields
+        transaction.Amount = req.Amount;
+        transaction.Date = req.Date;
+        transaction.CategoryId = req.CategoryId;
+        transaction.Description = string.IsNullOrWhiteSpace(req.Description) ? null : req.Description.Trim();
+
+        await _db.SaveChangesAsync();
+
+        // Load the category for the response
+        var category = await _db.Categories.AsNoTracking()
+            .Where(c => c.Id == transaction.CategoryId)
+            .Select(c => new TransactionCategoryDto(c.Id, c.Name))
+            .SingleAsync();
+
+        var response = new TransactionResponse(
+            transaction.Id,
+            transaction.Amount,
+            transaction.Date,
+            transaction.Description,
+            category
+        );
+
+        return Ok(response);
+    }
+
+    // DELETE /transactions/{id}
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Find transaction and verify ownership
+        var transaction = await _db.Transactions
+            .Where(t => t.Id == id && t.UserId == userId)
+            .SingleOrDefaultAsync();
+
+        if (transaction == null)
+            return NotFound();
+
+        _db.Transactions.Remove(transaction);
+        await _db.SaveChangesAsync();
+
+        return NoContent();
     }
 }
