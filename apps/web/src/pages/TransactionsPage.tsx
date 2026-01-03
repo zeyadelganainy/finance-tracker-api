@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { format, parseISO } from 'date-fns';
+import { format, parse } from 'date-fns';
 import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
 import { Transaction, PagedResponse, Category, CreateTransactionRequest } from '../types/api';
@@ -22,26 +22,46 @@ interface TransactionFilters {
   categoryId?: string;
 }
 
+const normalizeDateString = (value: string) => {
+  if (!value) return value;
+  const tIndex = value.indexOf('T');
+  return tIndex === -1 ? value : value.slice(0, tIndex);
+};
+
+const parseTxnDate = (dateStr: string) => {
+  const normalized = normalizeDateString(dateStr);
+  const parsedDate = parse(normalized, 'yyyy-MM-dd', new Date());
+  if (isNaN(parsedDate.getTime())) {
+    return new Date(0); // Stable fallback to keep sort deterministic
+  }
+  return parsedDate;
+};
+
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   
+  // Default filters: no date range, so backend returns all transactions
+  // from/to are intentionally undefined to avoid server-side date filtering
   const [filters, setFilters] = useState<TransactionFilters>({
     page: 1,
     pageSize: 20,
+    // from: undefined (no start date filter)
+    // to: undefined (no end date filter)
   });
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   
-  // Fetch transactions with filters
+  // Fetch ALL transactions (no pagination to backend, paginate locally after sorting/filtering)
+  // This ensures newest-first sorting works across all pages
   const { data: transactionsData, isLoading: loadingTransactions } = useQuery({
-    queryKey: ['transactions', filters],
+    queryKey: ['transactions', filters.from, filters.to],
     queryFn: async () => {
       const params = new URLSearchParams({
-        page: filters.page.toString(),
-        pageSize: filters.pageSize.toString(),
+        page: '1',
+        pageSize: '1000', // Fetch max items per request
       });
       if (filters.from) params.append('from', filters.from);
       if (filters.to) params.append('to', filters.to);
@@ -59,7 +79,14 @@ export function TransactionsPage() {
   
   // Delete mutation
   const deleteMutation = useMutation({
-    mutationFn: (id: number) => apiFetch(`/transactions/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: number) => {
+      // Dev-only: log the actual transaction ID being deleted
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug(`[DeleteTransaction] id=${id}`);
+      }
+      return apiFetch(`/transactions/${id}`, { method: 'DELETE' });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       showToast('Transaction deleted successfully', 'success');
@@ -70,12 +97,16 @@ export function TransactionsPage() {
     },
   });
   
-  // Update via delete + create (since no PUT endpoint exists per README)
+  // Update mutation - delete old transaction and create new one (since API has no PUT endpoint)
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: CreateTransactionRequest }) => {
-      // Delete old transaction
+      // Dev-only: log the actual transaction ID being edited
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug(`[UpdateTransaction] id=${id}, data=`, data);
+      }
+      // API doesn't have PUT endpoint, so delete old and create new
       await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
-      // Create new one with updated data
       return apiFetch<Transaction>('/transactions', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -109,13 +140,42 @@ export function TransactionsPage() {
     });
   };
   
-  const filteredByCategory = filters.categoryId
-    ? transactionsData?.items.filter((t) => t.category.id.toString() === filters.categoryId)
-    : transactionsData?.items;
+  // Normalize transactions (handle different API response shapes)
+  const allTransactions = (transactionsData?.items ?? []).map((t: any) => {
+    // Safeguard category access
+    const categoryId = t.category?.id ?? t.categoryId ?? 0;
+    const categoryName = t.category?.name ?? t.categoryName ?? 'Uncategorized';
+    return {
+      ...t,
+      category: {
+        id: categoryId,
+        name: categoryName,
+      },
+    } as Transaction;
+  });
+
+  // Sort newest first (today's transactions at top of page 1)
+  // IMPORTANT: Parse date-only strings (YYYY-MM-DD) using date-fns parse() to avoid timezone shifts
+  const sortedTransactions = [...allTransactions].sort((a, b) => {
+    const dateA = parseTxnDate(a.date).getTime();
+    const dateB = parseTxnDate(b.date).getTime();
+    if (dateB !== dateA) return dateB - dateA; // descending (newest first)
+    return b.id - a.id; // tie-breaker by id (newer ids first)
+  });
+
+  // Filter by category if needed
+  const filteredTransactions = filters.categoryId
+    ? sortedTransactions.filter((t) => t.category.id.toString() === filters.categoryId)
+    : sortedTransactions;
   
-  const totalPages = transactionsData
-    ? Math.ceil(transactionsData.total / filters.pageSize)
-    : 0;
+  // Apply client-side pagination AFTER sorting and filtering
+  const startIndex = (filters.page - 1) * filters.pageSize;
+  const endIndex = startIndex + filters.pageSize;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+  
+  // Total based on filtered array (not API response)
+  const totalFiltered = filteredTransactions.length;
+  const totalPages = Math.ceil(totalFiltered / filters.pageSize);
     
   const hasFilters = filters.from || filters.to || filters.categoryId;
   
@@ -128,7 +188,7 @@ export function TransactionsPage() {
             <div>
               <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
               <p className="mt-2 text-sm text-gray-600">
-                {transactionsData?.total || 0} total transactions
+                {totalFiltered} total transactions
               </p>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
@@ -195,7 +255,7 @@ export function TransactionsPage() {
           <Card>
             <TableSkeleton rows={10} />
           </Card>
-        ) : filteredByCategory && filteredByCategory.length > 0 ? (
+        ) : paginatedTransactions && paginatedTransactions.length > 0 ? (
           <>
             <Card className="overflow-hidden">
               <div className="overflow-x-auto">
@@ -220,7 +280,7 @@ export function TransactionsPage() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {filteredByCategory.map((transaction) => (
+                    {paginatedTransactions.map((transaction) => (
                       <TransactionRow
                         key={transaction.id}
                         transaction={transaction}
@@ -241,9 +301,9 @@ export function TransactionsPage() {
             {/* Pagination */}
             <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{(filters.page - 1) * filters.pageSize + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(filters.page * filters.pageSize, transactionsData?.total || 0)}</span> of{' '}
-                <span className="font-medium">{transactionsData?.total || 0}</span> results
+                Showing <span className="font-medium">{totalFiltered === 0 ? 0 : startIndex + 1}</span> to{' '}
+                <span className="font-medium">{Math.min(startIndex + filters.pageSize, totalFiltered)}</span> of{' '}
+                <span className="font-medium">{totalFiltered}</span> results
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -445,7 +505,7 @@ function TransactionRow({
   return (
     <tr className="hover:bg-gray-50 transition-colors">
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
-        {format(parseISO(transaction.date), 'MMM dd, yyyy')}
+        {format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}
       </td>
       <td className="px-6 py-4 text-sm text-gray-900">
         {transaction.description || <span className="text-gray-400 italic">No description</span>}
@@ -495,7 +555,7 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
     amount: '',
-    date: new Date().toISOString().split('T')[0],
+    date: format(new Date(), 'yyyy-MM-dd'), // Local time, no timezone shift
     categoryId: categories[0]?.id.toString() || '',
     description: '',
   });
@@ -506,7 +566,11 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
         method: 'POST',
         body: JSON.stringify(data),
       }),
-    onSuccess: () => {
+    onSuccess: (created) => {
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug(`[CreateTransaction] raw date=${created?.date}`);
+      }
       showToast('Transaction created successfully', 'success');
       onSuccess();
     },

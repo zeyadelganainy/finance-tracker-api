@@ -23,7 +23,15 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
     cache: 'no-store',
   };
 
-  const response = await fetch(`${env.apiBaseUrl}${path}`, fetchOptions);
+  const fullUrl = `${env.apiBaseUrl}${path}`;
+
+  // Dev-only: log requests for audit trail (remove after bug verification)
+  if (import.meta.env.DEV && (path.includes('/transactions/') || path.includes('DELETE') || path.includes('PUT'))) {
+    // eslint-disable-next-line no-console
+    console.debug(`[apiFetch] ${fetchOptions.method || 'GET'} ${fullUrl}`);
+  }
+
+  const response = await fetch(fullUrl, fetchOptions);
 
   if (response.status === 401) {
     await supabase.auth.signOut();
