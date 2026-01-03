@@ -13,6 +13,9 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { TableSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
+import { CategorySelect } from '../components/categories/CategorySelect';
+import { CategoryForm } from '../components/categories/CategoryForm';
+import { useCategories } from '../hooks/useCategories';
 
 interface TransactionFilters {
   page: number;
@@ -28,7 +31,7 @@ const normalizeDateString = (value: string) => {
   return tIndex === -1 ? value : value.slice(0, tIndex);
 };
 
-const parseTxnDate = (dateStr: string) => {
+const parseTxnDate = (dateStr: string) => {a
   const normalized = normalizeDateString(dateStr);
   const parsedDate = parse(normalized, 'yyyy-MM-dd', new Date());
   if (isNaN(parsedDate.getTime())) {
@@ -77,10 +80,7 @@ export function TransactionsPage() {
   });
   
   // Fetch categories for dropdowns
-  const { data: categories = [] } = useQuery({
-    queryKey: ['categories'],
-    queryFn: () => apiFetch<Category[]>('/categories'),
-  });
+  const { categories, isLoading: categoriesLoading, createCategory } = useCategories();
   
   // Delete mutation
   const deleteMutation = useMutation({
@@ -153,7 +153,7 @@ export function TransactionsPage() {
     return {
       ...t,
       category: {
-        id: categoryId,
+        id: categoryId?.toString?.() ?? categoryId.toString(),
         name: categoryName,
       },
     } as Transaction;
@@ -417,6 +417,8 @@ export function TransactionsPage() {
               setShowCreateModal(false);
               queryClient.invalidateQueries({ predicate: isTransactionsQuery });
             }}
+            onCreateCategory={createCategory}
+            categoriesLoading={categoriesLoading}
           />
         )}
 
@@ -432,6 +434,8 @@ export function TransactionsPage() {
                 { onSuccess: () => setMobileEditTx(null) }
               )
             }
+            onCreateCategory={createCategory}
+            categoriesLoading={categoriesLoading}
           />
         )}
 
@@ -695,28 +699,43 @@ function MobileEditTransactionModal({
   isSaving,
   onClose,
   onSave,
+  onCreateCategory,
+  categoriesLoading,
 }: {
   transaction: Transaction;
   categories: Category[];
   isSaving: boolean;
   onClose: () => void;
   onSave: (data: CreateTransactionRequest) => void;
+  onCreateCategory: (values: { name: string; type?: 'expense' | 'income' }) => Promise<Category>;
+  categoriesLoading?: boolean;
 }) {
   const [formData, setFormData] = useState({
     date: transaction.date,
     description: transaction.description || '',
-    categoryId: transaction.category.id.toString(),
+    categoryId: transaction.category.id,
     amount: transaction.amount.toString(),
   });
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryWarning, setCategoryWarning] = useState<string | null>(null);
 
   useEffect(() => {
     setFormData({
       date: transaction.date,
       description: transaction.description || '',
-      categoryId: transaction.category.id.toString(),
+      categoryId: transaction.category.id,
       amount: transaction.amount.toString(),
     });
   }, [transaction]);
+
+  useEffect(() => {
+    if (formData.categoryId && !categories.find((c) => c.id === formData.categoryId)) {
+      setCategoryWarning('Selected category no longer exists. Please choose another.');
+      setFormData((prev) => ({ ...prev, categoryId: '' }));
+    } else {
+      setCategoryWarning(null);
+    }
+  }, [categories, formData.categoryId]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -746,12 +765,15 @@ function MobileEditTransactionModal({
           onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
           required
         />
-        <Select
+        <CategorySelect
           label="Category"
+          categories={categories}
           value={formData.categoryId}
-          onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-          options={categories.map((c) => ({ value: c.id.toString(), label: c.name }))}
+          onChange={(id) => setFormData({ ...formData, categoryId: id })}
+          onCreateNew={() => setShowCategoryModal(true)}
           required
+          disabled={categoriesLoading}
+          warning={categoryWarning}
         />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
@@ -772,6 +794,19 @@ function MobileEditTransactionModal({
           </Button>
         </div>
       </form>
+      {showCategoryModal && (
+        <Modal isOpen onClose={() => setShowCategoryModal(false)} title="Create Category" size="sm">
+          <CategoryForm
+            submitLabel="Create"
+            onSubmit={async (values) => {
+              const created = await onCreateCategory({ name: values.name, type: values.type || undefined });
+              setFormData((prev) => ({ ...prev, categoryId: created.id }));
+              setShowCategoryModal(false);
+            }}
+            onCancel={() => setShowCategoryModal(false)}
+          />
+        </Modal>
+      )}
     </Modal>
   );
 }
@@ -856,17 +891,33 @@ interface CreateTransactionModalProps {
   categories: Category[];
   onClose: () => void;
   onSuccess: () => void;
+  onCreateCategory: (values: { name: string; type?: 'expense' | 'income' }) => Promise<Category>;
+  categoriesLoading?: boolean;
 }
 
-function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransactionModalProps) {
+function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCategory, categoriesLoading }: CreateTransactionModalProps) {
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     amount: '',
     date: format(new Date(), 'yyyy-MM-dd'), // Local time, no timezone shift
-    categoryId: categories[0]?.id.toString() || '',
+    categoryId: categories[0]?.id || '',
     description: '',
   });
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryWarning, setCategoryWarning] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!formData.categoryId && categories.length > 0) {
+      setFormData((prev) => ({ ...prev, categoryId: categories[0].id }));
+    }
+    if (formData.categoryId && !categories.find((c) => c.id === formData.categoryId)) {
+      setCategoryWarning('Selected category no longer exists. Please choose another.');
+      setFormData((prev) => ({ ...prev, categoryId: '' }));
+    } else {
+      setCategoryWarning(null);
+    }
+  }, [categories, formData.categoryId]);
   
   const createMutation = useMutation({
     mutationFn: (data: CreateTransactionRequest) =>
@@ -946,12 +997,15 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
           required
         />
-        <Select
+        <CategorySelect
           label="Category"
+          categories={categories}
           value={formData.categoryId}
-          onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
-          options={categories.map((c) => ({ value: c.id.toString(), label: c.name }))}
+          onChange={(id) => setFormData({ ...formData, categoryId: id })}
+          onCreateNew={() => setShowCategoryModal(true)}
           required
+          disabled={categoriesLoading}
+          warning={categoryWarning}
         />
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -974,6 +1028,19 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
           </Button>
         </div>
       </form>
+      {showCategoryModal && (
+        <Modal isOpen onClose={() => setShowCategoryModal(false)} title="Create Category" size="sm">
+          <CategoryForm
+            submitLabel="Create"
+            onSubmit={async (values) => {
+              const created = await onCreateCategory({ name: values.name, type: values.type || undefined });
+              setFormData((prev) => ({ ...prev, categoryId: created.id }));
+              setShowCategoryModal(false);
+            }}
+            onCancel={() => setShowCategoryModal(false)}
+          />
+        </Modal>
+      )}
     </Modal>
   );
 }

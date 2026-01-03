@@ -44,6 +44,7 @@ public class AppDbContext : DbContext
             // Unique constraint per user - each user can have their own categories
             e.HasIndex(x => new { x.UserId, x.Name }).IsUnique();
             e.HasIndex(x => x.UserId); // Index for user data isolation
+            e.Property(x => x.Type).HasMaxLength(20);
         });
 
         // AccountSnapshot constraints and indexes

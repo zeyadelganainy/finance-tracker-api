@@ -1,8 +1,14 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { apiFetch } from '../lib/apiClient';
 import { useCategories } from '../hooks/useCategories';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+import { Card } from '../components/ui/Card';
+import { Modal } from '../components/ui/Modal';
+import { CategorySelect } from '../components/categories/CategorySelect';
+import { CategoryForm } from '../components/categories/CategoryForm';
 
 interface FormData {
   amount: string;
@@ -13,356 +19,160 @@ interface FormData {
 
 export function AddTransactionPage() {
   const navigate = useNavigate();
-  const { categories, loading: categoriesLoading, error: categoriesError } = useCategories();
-  
+  const { categories, isLoading, error, createCategory } = useCategories();
   const [formData, setFormData] = useState<FormData>({
     amount: '',
-    date: format(new Date(), 'yyyy-MM-dd'), // Today's date in YYYY-MM-DD (local time, no timezone shift)
+    date: format(new Date(), 'yyyy-MM-dd'),
     categoryId: '',
     description: '',
   });
-  
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categoryWarning, setCategoryWarning] = useState<string | null>(null);
 
-  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  }
+  useEffect(() => {
+    if (formData.categoryId && !categories.find((c) => c.id === formData.categoryId)) {
+      setCategoryWarning('Selected category no longer exists. Please choose another.');
+      setFormData((prev) => ({ ...prev, categoryId: '' }));
+    } else {
+      setCategoryWarning(null);
+    }
+  }, [categories, formData.categoryId]);
 
   function validateForm(): string | null {
-    if (!formData.amount || formData.amount === '0') {
-      return 'Amount is required and cannot be zero';
-    }
-    if (!formData.date) {
-      return 'Date is required';
-    }
-    if (!formData.categoryId) {
-      return 'Category is required';
-    }
+    if (!formData.amount || formData.amount === '0') return 'Amount is required and cannot be zero';
+    if (!formData.date) return 'Date is required';
+    if (!formData.categoryId) return 'Category is required';
     return null;
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    
     const validationError = validateForm();
     if (validationError) {
-      setError(validationError);
+      setErrorMessage(validationError);
       return;
     }
 
     try {
       setSubmitting(true);
-      setError(null);
-
+      setErrorMessage(null);
       const payload = {
         amount: parseFloat(formData.amount),
         date: formData.date,
         categoryId: parseInt(formData.categoryId),
         description: formData.description.trim() || undefined,
       };
-
-      await apiFetch('/transactions', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-
-      // Redirect to transactions page on success
+      await apiFetch('/transactions', { method: 'POST', body: JSON.stringify(payload) });
       navigate('/transactions');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create transaction');
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to create transaction');
     } finally {
       setSubmitting(false);
     }
   }
 
-  if (categoriesLoading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.loadingState}>
-          <div style={styles.spinner}></div>
-          <p>Loading categories...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (categoriesError) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.errorState}>
-          <h2 style={styles.errorTitle}>Error</h2>
-          <p style={styles.errorMessage}>{categoriesError}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (categories.length === 0) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.errorState}>
-          <h2 style={styles.errorTitle}>No Categories</h2>
-          <p style={styles.errorMessage}>
-            You need to create at least one category before adding transactions.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  const handleCreateCategory = async (values: { name: string; type?: 'expense' | 'income' }) => {
+    const created = await createCategory(values);
+    setFormData((prev) => ({ ...prev, categoryId: created.id }));
+  };
 
   return (
-    <div style={styles.container}>
-      <header style={styles.header}>
-        <h1 style={styles.title}>Add Transaction</h1>
-        <p style={styles.subtitle}>Record a new income or expense</p>
-      </header>
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Add Transaction</h1>
+          <p className="text-sm text-gray-600 mt-2">Record a new income or expense</p>
+        </div>
 
-      <form onSubmit={handleSubmit} style={styles.form}>
-        {error && (
-          <div style={styles.errorBanner}>
-            {error}
-          </div>
-        )}
+        <Card className="p-6 sm:p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {errorMessage && (
+              <div className="p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">{errorMessage}</div>
+            )}
+            {error && (
+              <div className="p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">{error}</div>
+            )}
 
-        <div style={styles.formGroup}>
-          <label htmlFor="amount" style={styles.label}>
-            Amount *
-          </label>
-          <input
-            type="number"
-            id="amount"
-            name="amount"
-            step="0.01"
-            value={formData.amount}
-            onChange={handleChange}
-            placeholder="Enter amount (negative for expense, positive for income)"
-            style={styles.input}
-            disabled={submitting}
+            <Input
+              type="number"
+              step="0.01"
+              label="Amount"
+              value={formData.amount}
+              onChange={(e) => setFormData((prev) => ({ ...prev, amount: e.target.value }))}
+              required
+              disabled={submitting || isLoading}
+              helperText="Use negative for expenses (e.g., -50.00) and positive for income (e.g., 3000.00)"
+            />
+
+            <Input
+              type="date"
+              label="Date"
+              value={formData.date}
+              onChange={(e) => setFormData((prev) => ({ ...prev, date: e.target.value }))}
+              required
+              disabled={submitting || isLoading}
+            />
+
+            <CategorySelect
+              label="Category"
+              categories={categories}
+              value={formData.categoryId}
+              onChange={(id) => setFormData((prev) => ({ ...prev, categoryId: id }))}
+              onCreateNew={() => setShowCategoryModal(true)}
+              required
+              disabled={submitting || isLoading}
+              warning={categoryWarning}
+            />
+
+            <div>
+              <label className="block text-sm font-medium text-gray-800 mb-1">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                maxLength={200}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition"
+                placeholder="Add a description (optional)"
+                disabled={submitting || isLoading}
+              />
+              <p className="text-sm text-gray-500 mt-1">{formData.description.length}/200 characters</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/transactions')}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" isLoading={submitting} disabled={submitting || isLoading}>
+                Create Transaction
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </div>
+
+      {showCategoryModal && (
+        <Modal isOpen onClose={() => setShowCategoryModal(false)} title="Create Category" size="sm">
+          <CategoryForm
+            submitLabel="Create"
+            onSubmit={async (values) => {
+              try {
+                await handleCreateCategory({ name: values.name, type: values.type || undefined });
+                setShowCategoryModal(false);
+              } catch (err) {
+                setErrorMessage(err instanceof Error ? err.message : 'Failed to create category');
+              }
+            }}
+            onCancel={() => setShowCategoryModal(false)}
           />
-          <p style={styles.hint}>
-            Use negative numbers for expenses (e.g., -50.00) and positive for income (e.g., 3000.00)
-          </p>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label htmlFor="date" style={styles.label}>
-            Date *
-          </label>
-          <input
-            type="date"
-            id="date"
-            name="date"
-            value={formData.date}
-            onChange={handleChange}
-            style={styles.input}
-            disabled={submitting}
-          />
-        </div>
-
-        <div style={styles.formGroup}>
-          <label htmlFor="categoryId" style={styles.label}>
-            Category *
-          </label>
-          <select
-            id="categoryId"
-            name="categoryId"
-            value={formData.categoryId}
-            onChange={handleChange}
-            style={styles.select}
-            disabled={submitting}
-          >
-            <option value="">Select a category</option>
-            {categories.map(category => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div style={styles.formGroup}>
-          <label htmlFor="description" style={styles.label}>
-            Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            value={formData.description}
-            onChange={handleChange}
-            placeholder="Add a description (optional)"
-            rows={3}
-            maxLength={200}
-            style={styles.textarea}
-            disabled={submitting}
-          />
-          <p style={styles.hint}>
-            {formData.description.length}/200 characters
-          </p>
-        </div>
-
-        <div style={styles.buttonGroup}>
-          <button
-            type="button"
-            onClick={() => navigate('/transactions')}
-            style={styles.cancelButton}
-            disabled={submitting}
-          >
-            Cancel
-          </button>
-          <button
-            type="submit"
-            style={styles.submitButton}
-            disabled={submitting}
-          >
-            {submitting ? 'Creating...' : 'Create Transaction'}
-          </button>
-        </div>
-      </form>
+        </Modal>
+      )}
     </div>
   );
 }
-
-const styles: { [key: string]: React.CSSProperties } = {
-  container: {
-    maxWidth: '600px',
-    margin: '0 auto',
-    padding: '32px 16px',
-  },
-  header: {
-    marginBottom: '32px',
-  },
-  title: {
-    fontSize: '32px',
-    fontWeight: '700',
-    color: '#111827',
-    marginBottom: '8px',
-  },
-  subtitle: {
-    fontSize: '16px',
-    color: '#6b7280',
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '24px',
-  },
-  formGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-  },
-  label: {
-    fontSize: '14px',
-    fontWeight: '600',
-    color: '#374151',
-  },
-  input: {
-    padding: '12px 16px',
-    fontSize: '16px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    boxSizing: 'border-box',
-  },
-  select: {
-    padding: '12px 16px',
-    fontSize: '16px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    backgroundColor: '#ffffff',
-    cursor: 'pointer',
-    boxSizing: 'border-box',
-  },
-  textarea: {
-    padding: '12px 16px',
-    fontSize: '16px',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    outline: 'none',
-    transition: 'border-color 0.2s',
-    fontFamily: 'inherit',
-    resize: 'vertical',
-    boxSizing: 'border-box',
-  },
-  hint: {
-    fontSize: '14px',
-    color: '#9ca3af',
-    margin: 0,
-  },
-  buttonGroup: {
-    display: 'flex',
-    gap: '12px',
-    marginTop: '8px',
-  },
-  cancelButton: {
-    flex: 1,
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#6b7280',
-    backgroundColor: '#ffffff',
-    border: '1px solid #d1d5db',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'all 0.2s',
-  },
-  submitButton: {
-    flex: 1,
-    padding: '12px 24px',
-    fontSize: '16px',
-    fontWeight: '600',
-    color: '#ffffff',
-    backgroundColor: '#3b82f6',
-    border: 'none',
-    borderRadius: '8px',
-    cursor: 'pointer',
-    transition: 'background-color 0.2s',
-  },
-  errorBanner: {
-    padding: '12px 16px',
-    backgroundColor: '#fee2e2',
-    color: '#dc2626',
-    borderRadius: '8px',
-    fontSize: '14px',
-  },
-  loadingState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '400px',
-    gap: '16px',
-  },
-  spinner: {
-    width: '48px',
-    height: '48px',
-    border: '4px solid #e5e7eb',
-    borderTopColor: '#3b82f6',
-    borderRadius: '50%',
-    animation: 'spin 1s linear infinite',
-  },
-  errorState: {
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    minHeight: '400px',
-    gap: '16px',
-    textAlign: 'center',
-  },
-  errorTitle: {
-    fontSize: '24px',
-    fontWeight: '700',
-    color: '#dc2626',
-  },
-  errorMessage: {
-    fontSize: '16px',
-    color: '#6b7280',
-    maxWidth: '500px',
-  },
-};

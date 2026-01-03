@@ -5,12 +5,18 @@
 
 // Categories
 export interface Category {
-  id: number;
+  id: string; // client-friendly id (stringified)
   name: string;
+  type?: 'expense' | 'income';
 }
 
 export interface CreateCategoryRequest {
   name: string;
+  type?: 'expense' | 'income';
+}
+
+export interface UpdateCategoryRequest extends CreateCategoryRequest {
+  id: string;
 }
 
 // Transactions
@@ -20,7 +26,7 @@ export interface Transaction {
   date: string; // YYYY-MM-DD
   description: string | null;
   category: {
-    id: number;
+    id: string;
     name: string;
   };
 }
