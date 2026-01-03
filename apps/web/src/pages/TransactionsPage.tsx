@@ -37,30 +37,17 @@ const parseTxnDate = (dateStr: string) => {
   return parsedDate;
 };
 
-const isTransactionsQuery = (query: { queryKey?: readonly unknown[] }) =>
-  Array.isArray(query.queryKey) && query.queryKey[0] === 'transactions';
-
-const ensureTransactionCategory = (tx: Transaction): Transaction => ({
-  ...tx,
-  category: tx.category ?? {
-    id: (tx as any).categoryId ?? 0,
-    name: (tx as any).categoryName ?? 'Uncategorized',
-  },
-});
-
-const compareTransactions = (a: Transaction, b: Transaction) => {
-  const dateDiff = parseTxnDate(b.date).getTime() - parseTxnDate(a.date).getTime();
-  if (dateDiff !== 0) return dateDiff; // newest first
-  return b.id - a.id; // tie-breaker by id desc
-};
-
 export function TransactionsPage() {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   
+  // Default filters: no date range, so backend returns all transactions
+  // from/to are intentionally undefined to avoid server-side date filtering
   const [filters, setFilters] = useState<TransactionFilters>({
     page: 1,
     pageSize: 20,
+    // from: undefined (no start date filter)
+    // to: undefined (no end date filter)
   });
   
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -68,12 +55,13 @@ export function TransactionsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
   
   // Fetch ALL transactions (no pagination to backend, paginate locally after sorting/filtering)
+  // This ensures newest-first sorting works across all pages
   const { data: transactionsData, isLoading: loadingTransactions } = useQuery({
     queryKey: ['transactions', filters.from, filters.to],
     queryFn: async () => {
       const params = new URLSearchParams({
         page: '1',
-        pageSize: '1000', // large batch; client paginates
+        pageSize: '1000', // Fetch max items per request
       });
       if (filters.from) params.append('from', filters.from);
       if (filters.to) params.append('to', filters.to);
@@ -92,27 +80,15 @@ export function TransactionsPage() {
   // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: (id: number) => {
+      // Dev-only: log the actual transaction ID being deleted
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.debug(`[DeleteTransaction] id=${id}`);
       }
       return apiFetch(`/transactions/${id}`, { method: 'DELETE' });
     },
-    onSuccess: (_data, id) => {
-      queryClient.setQueriesData<PagedResponse<Transaction>>(
-        { predicate: isTransactionsQuery },
-        (existing) => {
-          if (!existing || !Array.isArray(existing.items)) return existing;
-          const updatedItems = existing.items.filter((t) => t.id !== id);
-          const nextTotal = typeof existing.total === 'number' ? Math.max(0, existing.total - 1) : existing.total;
-          return {
-            ...existing,
-            items: updatedItems,
-            total: nextTotal,
-          };
-        }
-      );
-      queryClient.invalidateQueries({ predicate: isTransactionsQuery });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
       showToast('Transaction deleted successfully', 'success');
       setDeleteConfirm(null);
     },
@@ -121,12 +97,16 @@ export function TransactionsPage() {
     },
   });
   
-  // Update via delete + create (since no PUT endpoint exists per README)
+  // Update mutation - delete old transaction and create new one (since API has no PUT endpoint)
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }: { id: number; data: CreateTransactionRequest }) => {
-      // Delete old transaction
+      // Dev-only: log the actual transaction ID being edited
+      if (import.meta.env.DEV) {
+        // eslint-disable-next-line no-console
+        console.debug(`[UpdateTransaction] id=${id}, data=`, data);
+      }
+      // API doesn't have PUT endpoint, so delete old and create new
       await apiFetch(`/transactions/${id}`, { method: 'DELETE' });
-      // Create new one with updated data
       return apiFetch<Transaction>('/transactions', {
         method: 'POST',
         body: JSON.stringify(data),
@@ -162,6 +142,7 @@ export function TransactionsPage() {
   
   // Normalize transactions (handle different API response shapes)
   const allTransactions = (transactionsData?.items ?? []).map((t: any) => {
+    // Safeguard category access
     const categoryId = t.category?.id ?? t.categoryId ?? 0;
     const categoryName = t.category?.name ?? t.categoryName ?? 'Uncategorized';
     return {
@@ -174,21 +155,28 @@ export function TransactionsPage() {
   });
 
   // Sort newest first (today's transactions at top of page 1)
-  const sortedTransactions = [...allTransactions].sort(compareTransactions);
+  // IMPORTANT: Parse date-only strings (YYYY-MM-DD) using date-fns parse() to avoid timezone shifts
+  const sortedTransactions = [...allTransactions].sort((a, b) => {
+    const dateA = parseTxnDate(a.date).getTime();
+    const dateB = parseTxnDate(b.date).getTime();
+    if (dateB !== dateA) return dateB - dateA; // descending (newest first)
+    return b.id - a.id; // tie-breaker by id (newer ids first)
+  });
 
   // Filter by category if needed
   const filteredTransactions = filters.categoryId
     ? sortedTransactions.filter((t) => t.category.id.toString() === filters.categoryId)
     : sortedTransactions;
-
+  
   // Apply client-side pagination AFTER sorting and filtering
   const startIndex = (filters.page - 1) * filters.pageSize;
   const endIndex = startIndex + filters.pageSize;
   const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
-
+  
   // Total based on filtered array (not API response)
   const totalFiltered = filteredTransactions.length;
   const totalPages = Math.ceil(totalFiltered / filters.pageSize);
+    
   const hasFilters = filters.from || filters.to || filters.categoryId;
   
   return (
@@ -568,7 +556,7 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     amount: '',
-    date: format(new Date(), 'yyyy-MM-dd'),
+    date: format(new Date(), 'yyyy-MM-dd'), // Local time, no timezone shift
     categoryId: categories[0]?.id.toString() || '',
     description: '',
   });
@@ -580,21 +568,6 @@ function CreateTransactionModal({ categories, onClose, onSuccess }: CreateTransa
         body: JSON.stringify(data),
       }),
     onSuccess: (created) => {
-      const normalizedCreated = ensureTransactionCategory(created as Transaction);
-      queryClient.setQueriesData<PagedResponse<Transaction>>(
-        { predicate: isTransactionsQuery },
-        (existing) => {
-          if (!existing || !Array.isArray(existing.items)) return existing;
-          const updatedItems = [normalizedCreated, ...existing.items];
-          const sortedItems = [...updatedItems].sort(compareTransactions);
-          const nextTotal = typeof existing.total === 'number' ? existing.total + 1 : existing.total;
-          return {
-            ...existing,
-            items: sortedItems,
-            total: nextTotal,
-          };
-        }
-      );
       if (import.meta.env.DEV) {
         // eslint-disable-next-line no-console
         console.debug(`[CreateTransaction] raw date=${created?.date}`);
