@@ -42,7 +42,7 @@ export function useCategories() {
     mutationFn: (payload: UpdateCategoryRequest) =>
       apiFetch<any>(`/categories/${payload.id}`, {
         method: 'PUT',
-        body: JSON.stringify({ name: payload.name, type: payload.type }),
+        body: JSON.stringify({ id: Number(payload.id), name: payload.name, type: payload.type }),
       }),
     onSuccess: (updated, variables) => {
       const normalized = normalizeCategory(updated ?? variables);
