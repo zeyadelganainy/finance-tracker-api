@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parse } from 'date-fns';
 import { apiFetch } from '../lib/apiClient';
@@ -56,6 +56,8 @@ export function TransactionsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [mobileEditTx, setMobileEditTx] = useState<Transaction | null>(null);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   
   // Fetch ALL transactions (no pagination to backend, paginate locally after sorting/filtering)
   // This ensures newest-first sorting works across all pages
@@ -203,106 +205,157 @@ export function TransactionsPage() {
           </div>
         </div>
         
-        {/* Filters */}
-        <Card className="mb-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700">Filters</h3>
-              {hasFilters && (
-                <Button variant="ghost" size="sm" onClick={handleResetFilters}>
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Reset Filters
-                </Button>
-              )}
+        {/* Mobile Filters Trigger */}
+        <div className="md:hidden mb-4">
+          <Button
+            variant="outline"
+            size="lg"
+            className="h-11 w-full"
+            onClick={() => setShowFiltersModal(true)}
+          >
+            Filters
+          </Button>
+        </div>
+
+        {/* Desktop Filters */}
+        <div className="hidden md:block">
+          <Card className="mb-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-700">Filters</h3>
+                {hasFilters && (
+                  <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Reset Filters
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <Input
+                  type="date"
+                  label="From Date"
+                  value={filters.from || ''}
+                  onChange={(e) => handleFilterChange('from', e.target.value || undefined)}
+                />
+                <Input
+                  type="date"
+                  label="To Date"
+                  value={filters.to || ''}
+                  onChange={(e) => handleFilterChange('to', e.target.value || undefined)}
+                />
+                <Select
+                  label="Category"
+                  value={filters.categoryId || ''}
+                  onChange={(e) => handleFilterChange('categoryId', e.target.value || undefined)}
+                  options={[
+                    { value: '', label: 'All Categories' },
+                    ...(categories || []).map((c) => ({ value: c.id.toString(), label: c.name })),
+                  ]}
+                />
+                <Select
+                  label="Page Size"
+                  value={filters.pageSize}
+                  onChange={(e) => handleFilterChange('pageSize', parseInt(e.target.value))}
+                  options={[
+                    { value: 10, label: '10 per page' },
+                    { value: 20, label: '20 per page' },
+                    { value: 50, label: '50 per page' },
+                  ]}
+                />
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Input
-                type="date"
-                label="From Date"
-                value={filters.from || ''}
-                onChange={(e) => handleFilterChange('from', e.target.value || undefined)}
-              />
-              <Input
-                type="date"
-                label="To Date"
-                value={filters.to || ''}
-                onChange={(e) => handleFilterChange('to', e.target.value || undefined)}
-              />
-              <Select
-                label="Category"
-                value={filters.categoryId || ''}
-                onChange={(e) => handleFilterChange('categoryId', e.target.value || undefined)}
-                options={[
-                  { value: '', label: 'All Categories' },
-                  ...(categories || []).map((c) => ({ value: c.id.toString(), label: c.name })),
-                ]}
-              />
-              <Select
-                label="Page Size"
-                value={filters.pageSize}
-                onChange={(e) => handleFilterChange('pageSize', parseInt(e.target.value))}
-                options={[
-                  { value: 10, label: '10 per page' },
-                  { value: 20, label: '20 per page' },
-                  { value: 50, label: '50 per page' },
-                ]}
-              />
-            </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
         
-        {/* Table */}
+        {/* Table / Cards */}
         {loadingTransactions ? (
           <Card>
             <TableSkeleton rows={10} />
           </Card>
         ) : paginatedTransactions && paginatedTransactions.length > 0 ? (
           <>
-            <Card className="overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Description
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Category
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {paginatedTransactions.map((transaction) => (
-                      <TransactionRow
-                        key={transaction.id}
-                        transaction={transaction}
-                        categories={categories || []}
-                        isEditing={editingId === transaction.id}
-                        onEdit={() => setEditingId(transaction.id)}
-                        onCancelEdit={() => setEditingId(null)}
-                        onSave={(data) => updateMutation.mutate({ id: transaction.id, data })}
-                        onDelete={() => setDeleteConfirm(transaction.id)}
-                        isSaving={updateMutation.isPending}
-                      />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
+            {/* Mobile Card List */}
+            <div className="md:hidden space-y-3">
+              <TransactionCardList
+                transactions={paginatedTransactions}
+                onEdit={(tx) => setMobileEditTx(tx)}
+                onDelete={(id) => setDeleteConfirm(id)}
+              />
+            </div>
+
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+              <Card className="overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Date
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Description
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Category
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Amount
+                        </th>
+                        <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {paginatedTransactions.map((transaction) => (
+                        <TransactionRow
+                          key={transaction.id}
+                          transaction={transaction}
+                          categories={categories || []}
+                          isEditing={editingId === transaction.id}
+                          onEdit={() => setEditingId(transaction.id)}
+                          onCancelEdit={() => setEditingId(null)}
+                          onSave={(data) => updateMutation.mutate({ id: transaction.id, data })}
+                          onDelete={() => setDeleteConfirm(transaction.id)}
+                          isSaving={updateMutation.isPending}
+                        />
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
             
-            {/* Pagination */}
-            <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            {/* Mobile Pagination */}
+            <div className="md:hidden mt-6 space-y-2">
+              <div className="text-sm text-gray-700 text-center">Page {filters.page} of {totalPages}</div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-11 w-full"
+                  onClick={() => handleFilterChange('page', filters.page - 1)}
+                  disabled={filters.page === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-11 w-full"
+                  onClick={() => handleFilterChange('page', filters.page + 1)}
+                  disabled={filters.page >= totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+
+            {/* Desktop Pagination */}
+            <div className="hidden md:flex mt-6 flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-sm text-gray-700">
                 Showing <span className="font-medium">{totalFiltered === 0 ? 0 : startIndex + 1}</span> to{' '}
                 <span className="font-medium">{Math.min(startIndex + filters.pageSize, totalFiltered)}</span> of{' '}
@@ -366,6 +419,34 @@ export function TransactionsPage() {
             }}
           />
         )}
+
+        {mobileEditTx && (
+          <MobileEditTransactionModal
+            transaction={mobileEditTx}
+            categories={categories || []}
+            isSaving={updateMutation.isPending}
+            onClose={() => setMobileEditTx(null)}
+            onSave={(data) =>
+              updateMutation.mutate(
+                { id: mobileEditTx.id, data },
+                { onSuccess: () => setMobileEditTx(null) }
+              )
+            }
+          />
+        )}
+
+        <MobileFiltersModal
+          isOpen={showFiltersModal}
+          onClose={() => setShowFiltersModal(false)}
+          filters={filters}
+          categories={categories || []}
+          onApply={(next) => {
+            handleFilterChange('from', next.from);
+            handleFilterChange('to', next.to);
+            handleFilterChange('categoryId', next.categoryId);
+            handleFilterChange('pageSize', next.pageSize);
+          }}
+        />
         
         {/* Delete Confirmation */}
         <ConfirmModal
@@ -544,6 +625,229 @@ function TransactionRow({
         </div>
       </td>
     </tr>
+  );
+}
+
+// Mobile transaction cards
+function TransactionCardList({
+  transactions,
+  onEdit,
+  onDelete,
+}: {
+  transactions: Transaction[];
+  onEdit: (transaction: Transaction) => void;
+  onDelete: (id: number) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      {transactions.map((transaction) => {
+        const isExpense = transaction.amount < 0;
+        const amountColor = isExpense ? 'text-red-600' : 'text-green-600';
+        return (
+          <Card key={transaction.id} className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <span className="text-sm text-gray-600">{format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}</span>
+              <span className={`text-lg font-semibold text-right ${amountColor}`}>
+                {formatCurrency(transaction.amount)}
+              </span>
+            </div>
+
+            <div className="text-sm text-gray-900 mt-2 line-clamp-2">
+              {transaction.description ? (
+                transaction.description
+              ) : (
+                <span className="text-gray-400 italic">No description</span>
+              )}
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <Badge variant="default">{transaction.category.name}</Badge>
+              <span
+                className={
+                  isExpense
+                    ? 'text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200'
+                    : 'text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200'
+                }
+              >
+                {isExpense ? 'Expense' : 'Income'}
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Button variant="outline" size="lg" className="h-11 w-full" onClick={() => onEdit(transaction)}>
+                Edit
+              </Button>
+              <Button variant="danger" size="lg" className="h-11 w-full" onClick={() => onDelete(transaction.id)}>
+                Delete
+              </Button>
+            </div>
+          </Card>
+        );
+      })}
+    </div>
+  );
+}
+
+// Mobile edit modal
+function MobileEditTransactionModal({
+  transaction,
+  categories,
+  isSaving,
+  onClose,
+  onSave,
+}: {
+  transaction: Transaction;
+  categories: Category[];
+  isSaving: boolean;
+  onClose: () => void;
+  onSave: (data: CreateTransactionRequest) => void;
+}) {
+  const [formData, setFormData] = useState({
+    date: transaction.date,
+    description: transaction.description || '',
+    categoryId: transaction.category.id.toString(),
+    amount: transaction.amount.toString(),
+  });
+
+  useEffect(() => {
+    setFormData({
+      date: transaction.date,
+      description: transaction.description || '',
+      categoryId: transaction.category.id.toString(),
+      amount: transaction.amount.toString(),
+    });
+  }, [transaction]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSave({
+      date: formData.date,
+      description: formData.description || undefined,
+      categoryId: parseInt(formData.categoryId),
+      amount: parseFloat(formData.amount),
+    });
+  };
+
+  return (
+    <Modal isOpen onClose={onClose} title="Edit Transaction" size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          type="date"
+          label="Date"
+          value={formData.date}
+          onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+          required
+        />
+        <Input
+          type="number"
+          step="0.01"
+          label="Amount"
+          value={formData.amount}
+          onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+          required
+        />
+        <Select
+          label="Category"
+          value={formData.categoryId}
+          onChange={(e) => setFormData({ ...formData, categoryId: e.target.value })}
+          options={categories.map((c) => ({ value: c.id.toString(), label: c.name }))}
+          required
+        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+          <textarea
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={3}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all duration-200 resize-none"
+            placeholder="Optional description"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <Button type="button" variant="outline" size="lg" className="h-11 w-full" onClick={onClose} disabled={isSaving}>
+            Cancel
+          </Button>
+          <Button type="submit" size="lg" className="h-11 w-full" isLoading={isSaving} disabled={isSaving}>
+            Save
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+// Mobile filters modal
+function MobileFiltersModal({
+  isOpen,
+  onClose,
+  filters,
+  categories,
+  onApply,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  filters: TransactionFilters;
+  categories: Category[];
+  onApply: (next: TransactionFilters) => void;
+}) {
+  const [localFilters, setLocalFilters] = useState<TransactionFilters>(filters);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalFilters(filters);
+    }
+  }, [filters, isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onApply(localFilters);
+    onClose();
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Filters" size="md">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <Input
+          type="date"
+          label="From Date"
+          value={localFilters.from || ''}
+          onChange={(e) => setLocalFilters({ ...localFilters, from: e.target.value || undefined })}
+        />
+        <Input
+          type="date"
+          label="To Date"
+          value={localFilters.to || ''}
+          onChange={(e) => setLocalFilters({ ...localFilters, to: e.target.value || undefined })}
+        />
+        <Select
+          label="Category"
+          value={localFilters.categoryId || ''}
+          onChange={(e) => setLocalFilters({ ...localFilters, categoryId: e.target.value || undefined })}
+          options={[
+            { value: '', label: 'All Categories' },
+            ...(categories || []).map((c) => ({ value: c.id.toString(), label: c.name })),
+          ]}
+        />
+        <Select
+          label="Page Size"
+          value={localFilters.pageSize}
+          onChange={(e) => setLocalFilters({ ...localFilters, pageSize: parseInt(e.target.value) })}
+          options={[
+            { value: 10, label: '10 per page' },
+            { value: 20, label: '20 per page' },
+            { value: 50, label: '50 per page' },
+          ]}
+        />
+        <div className="grid grid-cols-2 gap-3 pt-2">
+          <Button type="button" variant="outline" size="lg" className="h-11 w-full" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" size="lg" className="h-11 w-full">
+            Apply
+          </Button>
+        </div>
+      </form>
+    </Modal>
   );
 }
 
