@@ -17,6 +17,7 @@ export function CategoriesPage() {
   const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
   const [savingCreate, setSavingCreate] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -30,7 +31,12 @@ export function CategoriesPage() {
                 {categories.length} categor{categories.length === 1 ? 'y' : 'ies'}
               </p>
             </div>
-            <Button onClick={() => setShowCreateModal(true)}>
+            <Button onClick={() => {
+              // Ensure only one modal is active to avoid double-mounted modals in StrictMode/dev
+              setShowCreateModal(true);
+              setEditingCategory(null);
+              setPendingDelete(null);
+            }}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
@@ -69,14 +75,22 @@ export function CategoriesPage() {
                       <td className="px-6 py-4 text-sm text-gray-700 capitalize">{category.type || '—'}</td>
                       <td className="px-6 py-4 text-sm text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <Button variant="ghost" size="sm" onClick={() => setEditingCategory(category)}>
+                          <Button variant="ghost" size="sm" onClick={() => {
+                            setShowCreateModal(false);
+                            setPendingDelete(null);
+                            setEditingCategory(category);
+                          }}>
                             Edit
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             className="text-red-600 hover:text-red-700"
-                            onClick={() => setPendingDelete(category)}
+                            onClick={() => {
+                              setShowCreateModal(false);
+                              setEditingCategory(null);
+                              setPendingDelete(category);
+                            }}
                           >
                             Delete
                           </Button>
@@ -158,16 +172,22 @@ export function CategoriesPage() {
       {/* Delete Confirmation */}
       {pendingDelete && (
         <ConfirmModal
-          isOpen={true}
-          onClose={() => setPendingDelete(null)}
+          isOpen={!!pendingDelete}
+          onClose={() => {
+            if (deleting) return; // Avoid closing/reopening while a delete is already running
+            setPendingDelete(null);
+          }}
           onConfirm={async () => {
+            if (deleting || !pendingDelete) return; // Prevent double submission showing duplicate modals
             try {
+              setDeleting(true);
               await deleteCategory(pendingDelete.id);
               showToast('Category deleted', 'success');
             } catch (err) {
               const message = err instanceof Error ? err.message : 'Failed to delete category';
               showToast(message, 'error');
             } finally {
+              setDeleting(false);
               setPendingDelete(null);
             }
           }}
@@ -175,6 +195,7 @@ export function CategoriesPage() {
           message={`Are you sure you want to delete "${pendingDelete.name}"? This cannot be undone.`}
           confirmText="Delete"
           variant="danger"
+          isProcessing={deleting}
         />
       )}
       </div>

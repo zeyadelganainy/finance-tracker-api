@@ -95,6 +95,7 @@ interface ConfirmModalProps {
   confirmText?: string;
   cancelText?: string;
   variant?: 'danger' | 'primary';
+  isProcessing?: boolean;
 }
 
 export function ConfirmModal({
@@ -106,8 +107,10 @@ export function ConfirmModal({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'primary',
+  isProcessing = false,
 }: ConfirmModalProps) {
   const handleConfirm = () => {
+    if (isProcessing) return; // Guard against double-fire (e.g., rapid double-click or StrictMode re-renders)
     onConfirm();
     onClose();
   };
@@ -123,6 +126,7 @@ export function ConfirmModal({
           <button
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            disabled={isProcessing}
           >
             {cancelText}
           </button>
@@ -133,8 +137,9 @@ export function ConfirmModal({
                 ? 'bg-red-600 hover:bg-red-700 text-white'
                 : 'bg-blue-600 hover:bg-blue-700 text-white'
             }`}
+            disabled={isProcessing}
           >
-            {confirmText}
+            {isProcessing ? 'Working...' : confirmText}
           </button>
         </>
       }

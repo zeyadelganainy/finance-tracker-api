@@ -1,12 +1,7 @@
-import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
 import App from './App.tsx';
-import { Toaster } from 'react-hot-toast';
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-    <Toaster position="top-right" />
-  </StrictMode>
-);
+// StrictMode removed: was causing double-firing of mutations/toasts in development.
+// ToastProvider inside App already renders <Toaster>, so no duplicate needed here.
+createRoot(document.getElementById('root')!).render(<App />);
