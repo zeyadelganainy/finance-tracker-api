@@ -258,7 +258,8 @@ public class AccountsController : ControllerBase
                         category = new Category
                         {
                             UserId = userId,
-                            Name = categoryName
+                            Name = categoryName,
+                            Type = "expense" // default new categories to expense
                         };
                         _db.Categories.Add(category);
                         await _db.SaveChangesAsync();
@@ -278,9 +279,17 @@ public class AccountsController : ControllerBase
                         uncategorized = new Category
                         {
                             UserId = userId,
-                            Name = "Uncategorized"
+                            Name = "Uncategorized",
+                            Type = "expense"
                         };
                         _db.Categories.Add(uncategorized);
+                        await _db.SaveChangesAsync();
+                    }
+                    else if (string.IsNullOrWhiteSpace(uncategorized.Type))
+                    {
+                        // Ensure default uncategorized is marked as expense
+                        uncategorized.Type = "expense";
+                        _db.Categories.Update(uncategorized);
                         await _db.SaveChangesAsync();
                     }
 

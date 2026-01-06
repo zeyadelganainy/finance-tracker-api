@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parse } from 'date-fns';
 import { apiFetch } from '../lib/apiClient';
@@ -58,9 +58,12 @@ export function TransactionsPage() {
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const [mobileEditTx, setMobileEditTx] = useState<Transaction | null>(null);
   const [showFiltersModal, setShowFiltersModal] = useState(false);
+  const selectAllRef = useRef<HTMLInputElement>(null);
   
   // Fetch ALL transactions (no pagination to backend, paginate locally after sorting/filtering)
   // This ensures newest-first sorting works across all pages
@@ -92,10 +95,10 @@ export function TransactionsPage() {
       }
       return apiFetch(`/transactions/${id}`, { method: 'DELETE' });
     },
-    onSuccess: () => {
+    onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
       showToast('Transaction deleted successfully', 'success');
-      setDeleteConfirm(null);
+      setSelectedIds((prev) => prev.filter((x) => x !== id));
     },
     onError: (error: Error) => {
       showToast(error.message, 'error');
@@ -183,6 +186,46 @@ export function TransactionsPage() {
   const totalPages = Math.ceil(totalFiltered / filters.pageSize);
     
   const hasFilters = filters.from || filters.to || filters.categoryId;
+
+  const handleToggleSelect = (id: number) => {
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const pageIds = paginatedTransactions.map((t) => t.id);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+  const somePageSelected = !allPageSelected && pageIds.some((id) => selectedIds.includes(id));
+
+  useEffect(() => {
+    if (selectAllRef.current) {
+      selectAllRef.current.indeterminate = somePageSelected;
+    }
+  }, [somePageSelected, allPageSelected]);
+
+  const handleToggleSelectPage = () => {
+    if (allPageSelected) {
+      // Unselect only ids on this page
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
+    } else {
+      setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0 || bulkDeleting) return;
+    setBulkDeleting(true);
+    try {
+      await Promise.all(selectedIds.map((id) => deleteMutation.mutateAsync(id)));
+      setSelectedIds([]);
+      setBulkDeleteConfirm(false);
+      queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      showToast('Selected transactions deleted', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Bulk delete failed';
+      showToast(message, 'error');
+    } finally {
+      setBulkDeleting(false);
+    }
+  };
   
   return (
     <div className="min-h-screen bg-gray-50">
@@ -196,12 +239,23 @@ export function TransactionsPage() {
                 {totalFiltered} total transactions
               </p>
             </div>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Transaction
-            </Button>
+            <div className="flex flex-wrap gap-2 justify-end">
+              {selectedIds.length > 0 && (
+                <Button
+                  variant="danger"
+                  onClick={() => setBulkDeleteConfirm(true)}
+                  disabled={bulkDeleting}
+                >
+                  Delete Selected ({selectedIds.length})
+                </Button>
+              )}
+              <Button onClick={() => setShowCreateModal(true)}>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                New Transaction
+              </Button>
+            </div>
           </div>
         </div>
         
@@ -281,7 +335,9 @@ export function TransactionsPage() {
               <TransactionCardList
                 transactions={paginatedTransactions}
                 onEdit={(tx) => setMobileEditTx(tx)}
-                onDelete={(id) => setDeleteConfirm(id)}
+                onDelete={(id) => handleDelete(id)}
+                selectedIds={selectedIds}
+                onToggleSelect={handleToggleSelect}
               />
             </div>
 
@@ -292,6 +348,15 @@ export function TransactionsPage() {
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
+                        <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
+                          <input
+                            ref={selectAllRef}
+                            type="checkbox"
+                            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                            checked={allPageSelected}
+                            onChange={handleToggleSelectPage}
+                          />
+                        </th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
                           Date
                         </th>
@@ -319,8 +384,10 @@ export function TransactionsPage() {
                           onEdit={() => setEditingId(transaction.id)}
                           onCancelEdit={() => setEditingId(null)}
                           onSave={(data) => updateMutation.mutate({ id: transaction.id, data })}
-                          onDelete={() => setDeleteConfirm(transaction.id)}
+                          onDelete={() => handleDelete(transaction.id)}
                           isSaving={updateMutation.isPending}
+                          selected={selectedIds.includes(transaction.id)}
+                          onToggleSelect={() => handleToggleSelect(transaction.id)}
                         />
                       ))}
                     </tbody>
@@ -451,16 +518,17 @@ export function TransactionsPage() {
             handleFilterChange('pageSize', next.pageSize);
           }}
         />
-        
-        {/* Delete Confirmation */}
+
+        {/* Bulk Delete Confirmation */}
         <ConfirmModal
-          isOpen={deleteConfirm !== null}
-          onClose={() => setDeleteConfirm(null)}
-          onConfirm={() => deleteConfirm && handleDelete(deleteConfirm)}
-          title="Delete Transaction"
-          message="Are you sure you want to delete this transaction? This action cannot be undone."
+          isOpen={bulkDeleteConfirm}
+          onClose={() => setBulkDeleteConfirm(false)}
+          onConfirm={handleBulkDelete}
+          title="Delete Selected Transactions"
+          message={`Are you sure you want to delete ${selectedIds.length} transaction${selectedIds.length !== 1 ? 's' : ''}? This action cannot be undone.`}
           confirmText="Delete"
           variant="danger"
+          isProcessing={bulkDeleting}
         />
       </div>
     </div>
@@ -477,6 +545,8 @@ interface TransactionRowProps {
   onSave: (data: CreateTransactionRequest) => void;
   onDelete: () => void;
   isSaving: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
 }
 
 function TransactionRow({
@@ -488,6 +558,8 @@ function TransactionRow({
   onSave,
   onDelete,
   isSaving,
+  selected,
+  onToggleSelect,
 }: TransactionRowProps) {
   const [editData, setEditData] = useState({
     date: transaction.date,
@@ -516,6 +588,9 @@ function TransactionRow({
   if (isEditing) {
     return (
       <tr className="bg-blue-50 border-l-4 border-blue-500">
+        <td className="px-4 py-4">
+          <input type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 rounded" checked={selected} onChange={onToggleSelect} />
+        </td>
         <td className="px-6 py-4">
           <input
             type="date"
@@ -592,6 +667,14 @@ function TransactionRow({
   
   return (
     <tr className="hover:bg-gray-50 transition-colors">
+      <td className="px-4 py-4">
+        <input
+          type="checkbox"
+          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+          checked={selected}
+          onChange={onToggleSelect}
+        />
+      </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
         {format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}
       </td>
@@ -637,20 +720,33 @@ function TransactionCardList({
   transactions,
   onEdit,
   onDelete,
+  selectedIds,
+  onToggleSelect,
 }: {
   transactions: Transaction[];
   onEdit: (transaction: Transaction) => void;
   onDelete: (id: number) => void;
+  selectedIds: number[];
+  onToggleSelect: (id: number) => void;
 }) {
   return (
     <div className="space-y-3">
       {transactions.map((transaction) => {
         const isExpense = transaction.amount < 0;
         const amountColor = isExpense ? 'text-red-600' : 'text-green-600';
+        const selected = selectedIds.includes(transaction.id);
         return (
           <Card key={transaction.id} className="p-4">
             <div className="flex items-start justify-between gap-3">
-              <span className="text-sm text-gray-600">{format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}</span>
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                  checked={selected}
+                  onChange={() => onToggleSelect(transaction.id)}
+                />
+                <span className="text-sm text-gray-600">{format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}</span>
+              </div>
               <span className={`text-lg font-semibold text-right ${amountColor}`}>
                 {formatCurrency(transaction.amount)}
               </span>
