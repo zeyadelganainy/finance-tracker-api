@@ -106,7 +106,7 @@ public class AIContextController : ControllerBase
         var totalExpenses = transactions.Where(t => t.Amount < 0).Sum(t => t.Amount);
         
         var categoryBreakdown = transactions
-            .GroupBy(t => t.Category.Name)
+            .GroupBy(t => t.Category?.Name ?? "Uncategorized")
             .Select(g => new AICategoryBreakdown(
                 g.Key,
                 g.Sum(t => t.Amount),
