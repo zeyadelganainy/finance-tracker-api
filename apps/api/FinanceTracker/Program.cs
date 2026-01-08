@@ -2,6 +2,7 @@ using FinanceTracker.Auth;
 using FinanceTracker.Contracts.Common;
 using FinanceTracker.Data;
 using FinanceTracker.Middleware;
+using FinanceTracker.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -85,6 +86,9 @@ builder.Services.AddAuthorization();
 builder.Services.Configure<AuthConfiguration>(builder.Configuration.GetSection(AuthConfiguration.SectionName));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+
+// Register OFX parser service
+builder.Services.AddScoped<IOFXParserService, OFXParserService>();
 
 // ========================================
 // CORS Configuration

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Modal } from '../ui/Modal';
 import { CsvImportStep } from './CsvImportStep';
+import { OFXImportStep } from './OFXImportStep';
 
 interface ImportTransactionsModalProps {
   isOpen: boolean;
@@ -15,7 +16,7 @@ export function ImportTransactionsModal({
   accountId,
   onImportSuccess,
 }: ImportTransactionsModalProps) {
-  const [activeTab, setActiveTab] = useState<'csv' | 'pdf'>('csv');
+  const [activeTab, setActiveTab] = useState<'csv' | 'ofx' | 'pdf'>('csv');
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Import Transactions" size="xl">
@@ -34,6 +35,16 @@ export function ImportTransactionsModal({
               CSV Import
             </button>
             <button
+              onClick={() => setActiveTab('ofx')}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'ofx'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              OFX/QFX Import
+            </button>
+            <button
               onClick={() => setActiveTab('pdf')}
               className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
                 activeTab === 'pdf'
@@ -49,6 +60,10 @@ export function ImportTransactionsModal({
         {/* Tab Content */}
         {activeTab === 'csv' && (
           <CsvImportStep accountId={accountId} onSuccess={onImportSuccess} onCancel={onClose} />
+        )}
+
+        {activeTab === 'ofx' && (
+          <OFXImportStep accountId={accountId} onSuccess={onImportSuccess} onCancel={onClose} />
         )}
 
         {activeTab === 'pdf' && (

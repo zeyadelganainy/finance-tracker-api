@@ -253,6 +253,9 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
         } else {
           continue; // Skip if no amount column
         }
+
+        // Flip sign so expenses are negative; already-negative values become positive
+        amount = amount * -1;
         
         if (amount === 0) {
           continue; // Skip zero-amount rows
