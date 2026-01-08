@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthProvider';
 import { AuthLayout } from '../components/auth/AuthLayout';
 import { AboutWealthWise } from '../components/auth/AboutWealthWise';
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const { signIn, signInAsDemo, isLoading, demoEnabled } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -48,11 +50,11 @@ export function LoginPage() {
       about={<AboutWealthWise />}
       mobileAbout={<AboutWealthWise variant="mobile" />}
     >
-      <div className="bg-white/90 backdrop-blur shadow-xl border border-gray-100 rounded-2xl p-8 sm:p-10 space-y-8">
+      <div className="bg-white/90 dark:bg-gray-900/80 backdrop-blur shadow-xl border border-gray-100 dark:border-gray-800 rounded-2xl p-8 sm:p-10 space-y-8">
         <div className="space-y-2 text-center">
-          <p className="text-xs font-semibold tracking-[0.2em] text-gray-500 uppercase">Welcome</p>
-          <h1 className="text-3xl font-bold text-gray-900">Sign in</h1>
-          <p className="text-sm text-gray-600">Access your WealthWise dashboard</p>
+          <p className="text-xs font-semibold tracking-[0.2em] text-gray-500 uppercase">{t('auth.welcome')}</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('auth.signIn')}</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400">{t('auth.signInDescription')}</p>
         </div>
 
         {info && (
@@ -82,24 +84,24 @@ export function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-800">Email</label>
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">{t('auth.email')}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
               required
               autoComplete="email"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-800">Password</label>
+            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">{t('auth.password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
               required
               autoComplete="current-password"
             />
@@ -108,9 +110,9 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-blue-700 transition focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+            className="w-full bg-[var(--accent-color,#4f46e5)] text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-[var(--accent-color-hover,#4338ca)] transition focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:ring-offset-2 disabled:opacity-50"
           >
-            {isLoading ? 'Signing in...' : 'Sign in'}
+            {isLoading ? t('auth.signingIn') : t('auth.signIn')}
           </button>
         </form>
 
@@ -121,7 +123,7 @@ export function LoginPage() {
                 <div className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or</span>
+                <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">{t('auth.or')}</span>
               </div>
             </div>
 
@@ -130,21 +132,21 @@ export function LoginPage() {
               onClick={handleDemo}
               disabled={isLoading}
               className="w-full bg-gray-900 text-white py-2.5 rounded-lg font-semibold hover:bg-gray-800 transition focus:outline-none focus:ring-2 focus:ring-gray-700 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
-              title="Sign in with demo account to explore features"
+              title={t('auth.demoHint')}
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
-              Continue as Demo
+              {t('auth.continueDemo')}
             </button>
           </>
         )}
 
         <div className="space-y-2 text-center text-sm text-gray-600">
           <p>
-            Don&apos;t have an account?{' '}
+            {t('auth.noAccount')}{' '}
             <Link to="/register" className="text-blue-700 font-semibold hover:underline">
-              Create one
+              {t('auth.createOne')}
             </Link>
           </p>
         </div>

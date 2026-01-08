@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthProvider';
 
 export function RegisterPage() {
+  const { t } = useTranslation();
   const { signUp, isLoading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -28,30 +30,30 @@ export function RegisterPage() {
 
   if (showVerificationMessage) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="w-full max-w-md bg-white shadow-md rounded-xl p-8 space-y-6">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+        <div className="w-full max-w-md bg-white dark:bg-gray-900 shadow-md rounded-xl p-8 space-y-6">
           <div className="text-center">
             <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
               <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Verify your email</h1>
-            <p className="text-sm text-gray-600 mt-2">
-              Account created successfully!
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">{t('auth.verifyTitle')}</h1>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+              {t('auth.verifyBody')}
             </p>
           </div>
           
-          <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm px-4 py-3 rounded-lg">
-            <p className="font-medium mb-1">Check your inbox</p>
-            <p>We've sent a verification email to <strong>{email}</strong>. Please verify your email, then come back and log in.</p>
+          <div className="bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-gray-700 text-blue-800 dark:text-blue-200 text-sm px-4 py-3 rounded-lg">
+            <p className="font-medium mb-1">{t('auth.verifyTitle')}</p>
+            <p dangerouslySetInnerHTML={{ __html: t('auth.verifyHint', { email }) }} />
           </div>
 
           <Link 
             to="/login"
-            className="block w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition text-center"
+            className="block w-full bg-[var(--accent-color,#4f46e5)] text-white py-2 rounded-lg font-semibold hover:bg-[var(--accent-color-hover,#4338ca)] transition text-center"
           >
-            Go to Sign In
+            {t('auth.goToSignIn')}
           </Link>
         </div>
       </div>
@@ -59,11 +61,11 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-      <div className="w-full max-w-md bg-white shadow-md rounded-xl p-8 space-y-6">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-900 shadow-md rounded-xl p-8 space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
-          <p className="text-sm text-gray-600 mt-1">Join Finance Tracker</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">{t('auth.signUp')}</h1>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{t('auth.signUpDescription')}</p>
         </div>
 
         {error && (
@@ -74,24 +76,24 @@ export function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{t('auth.email')}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
               required
               autoComplete="email"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{t('auth.password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
               required
               autoComplete="new-password"
             />
@@ -100,16 +102,16 @@ export function RegisterPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition disabled:opacity-50"
+            className="w-full bg-[var(--accent-color,#4f46e5)] text-white py-2 rounded-lg font-semibold hover:bg-[var(--accent-color-hover,#4338ca)] transition disabled:opacity-50"
           >
-            {isLoading ? 'Creating account...' : 'Create account'}
+            {isLoading ? t('auth.creating') : t('auth.signUp')}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-600">
-          Already have an account?{' '}
+          {t('auth.haveAccount')}{' '}
           <Link to="/login" className="text-blue-600 hover:underline">
-            Sign in
+            {t('auth.signIn')}
           </Link>
         </p>
       </div>

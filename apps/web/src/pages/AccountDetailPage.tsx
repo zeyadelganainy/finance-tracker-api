@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO, parse } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../lib/apiClient';
 import { AccountDetail, AccountSnapshot, UpsertSnapshotRequest, UpdateAccountRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
@@ -15,6 +16,7 @@ import { formatCurrency } from '../lib/utils';
 import { ImportTransactionsModal } from '../components/transactions/ImportTransactionsModal';
 
 export function AccountDetailPage() {
+  const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -51,7 +53,7 @@ export function AccountDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['account-snapshots', id] });
       queryClient.invalidateQueries({ queryKey: ['account', id] });
-      showToast('Snapshot saved successfully', 'success');
+      showToast(t('accountDetail.saveSnapshot'), 'success');
       setBalance('');
       setSnapshotDate(format(new Date(), 'yyyy-MM-dd'));
     },
@@ -65,7 +67,7 @@ export function AccountDetailPage() {
     mutationFn: () =>
       apiFetch(`/accounts/${id}`, { method: 'DELETE' }),
     onSuccess: () => {
-      showToast('Account deleted successfully', 'success');
+      showToast(t('common.delete'), 'success');
       navigate('/accounts');
     },
     onError: (error: Error) => {
@@ -76,7 +78,7 @@ export function AccountDetailPage() {
   const handleSnapshotSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!balance) {
-      showToast('Balance is required', 'error');
+      showToast(t('common.required'), 'error');
       return;
     }
     upsertSnapshotMutation.mutate({
@@ -107,13 +109,13 @@ export function AccountDetailPage() {
     return (
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Button variant="ghost" onClick={() => navigate('/accounts')} className="mb-4">
-          ← Back to Accounts
+          ← {t('accountDetail.back')}
         </Button>
         <Card>
           <div className="text-center py-12">
-            <p className="text-lg text-red-600">Account not found</p>
+            <p className="text-lg text-red-600">{t('accountDetail.notFound')}</p>
             <Button className="mt-4" onClick={() => navigate('/accounts')}>
-              Back to Accounts
+              {t('accountDetail.back')}
             </Button>
           </div>
         </Card>
@@ -126,15 +128,15 @@ export function AccountDetailPage() {
       {/* Header */}
       <div className="mb-8">
         <Button variant="ghost" onClick={() => navigate('/accounts')} className="mb-4">
-          ← Back to Accounts
+          ← {t('accountDetail.back')}
         </Button>
         
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">{account.name}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{account.name}</h1>
             <div className="flex flex-wrap gap-2 mt-3">
               {account.type && <Badge variant="info">{account.type}</Badge>}
-              {account.isLiability && <Badge variant="warning">Liability</Badge>}
+              {account.isLiability && <Badge variant="warning">{t('accountDetail.liability')}</Badge>}
               <Badge variant="default">{account.currency}</Badge>
             </div>
           </div>
@@ -143,24 +145,24 @@ export function AccountDetailPage() {
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
-              Import Transactions
+              {t('accountDetail.import')}
             </Button>
             <Button variant="outline" onClick={() => setIsEditMode(!isEditMode)}>
-              {isEditMode ? 'Cancel' : 'Edit'}
+              {isEditMode ? t('common.cancel') : t('common.edit')}
             </Button>
             <Button variant="outline" onClick={() => setShowDeleteConfirm(true)} className="border-red-200 text-red-600 hover:bg-red-50">
-              Delete
+              {t('common.delete')}
             </Button>
           </div>
         </div>
         
         {account.institution && (
           <p className="mt-3 text-sm text-gray-600">
-            <span className="font-medium">Institution:</span> {account.institution}
+            <span className="font-medium">{t('accountDetail.institution')}:</span> {account.institution}
           </p>
         )}
         <p className="text-xs text-gray-500 mt-2">
-          Created {format(parseISO(account.createdAt), 'MMM dd, yyyy')} • Updated {format(parseISO(account.updatedAt), 'MMM dd, yyyy')}
+          {t('accountDetail.created')} {format(parseISO(account.createdAt), 'MMM dd, yyyy')} • {t('accountDetail.updated')} {format(parseISO(account.updatedAt), 'MMM dd, yyyy')}
         </p>
       </div>
       
@@ -178,35 +180,35 @@ export function AccountDetailPage() {
       
       {/* Latest Balance */}
       {account.latestBalance !== undefined && (
-        <Card className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+        <Card className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-gray-600">Latest Balance</p>
-              <p className="text-2xl font-bold text-gray-900">{formatCurrency(account.latestBalance)}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('accountDetail.latestBalance')}</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">{formatCurrency(account.latestBalance)}</p>
             </div>
             {account.latestBalanceDate && (
               <div>
-                <p className="text-sm text-gray-600">As of</p>
-                <p className="text-lg font-semibold text-gray-900">
+                <p className="text-sm text-gray-600 dark:text-gray-400">{t('accountDetail.asOf')}</p>
+                <p className="text-lg font-semibold text-gray-900 dark:text-gray-50">
                   {format(parseISO(account.latestBalanceDate), 'MMM dd, yyyy')}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-sm text-gray-600">Snapshots</p>
-              <p className="text-lg font-semibold text-gray-900">{account.snapshotCount}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{t('accountDetail.snapshots')}</p>
+              <p className="text-lg font-semibold text-gray-900 dark:text-gray-50">{account.snapshotCount}</p>
             </div>
           </div>
         </Card>
       )}
       
       {/* Add Snapshot Form */}
-      <Card className="mb-8" title="Add or Update Balance Snapshot">
+      <Card className="mb-8" title={t('accountDetail.addSnapshot')}>
         <form onSubmit={handleSnapshotSubmit} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Input
               type="date"
-              label="Date"
+              label={t('accountDetail.date')}
               value={snapshotDate}
               onChange={(e) => setSnapshotDate(e.target.value)}
               required
@@ -214,7 +216,7 @@ export function AccountDetailPage() {
             <Input
               type="number"
               step="0.01"
-              label="Balance"
+              label={t('accountDetail.balance')}
               value={balance}
               onChange={(e) => setBalance(e.target.value)}
               required
@@ -223,17 +225,17 @@ export function AccountDetailPage() {
           </div>
           <div className="flex gap-3">
             <Button type="submit" isLoading={upsertSnapshotMutation.isPending}>
-              Save Snapshot
+              {t('accountDetail.saveSnapshot')}
             </Button>
             <p className="text-sm text-gray-600 pt-2">
-              Creates or updates the balance for this date
+              {t('accountDetail.snapshotHelp')}
             </p>
           </div>
         </form>
       </Card>
       
       {/* Snapshots List */}
-      <Card title="Balance History">
+      <Card title={t('accountDetail.balanceHistory')}>
         {loadingSnapshots ? (
           <div className="space-y-2">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -242,18 +244,18 @@ export function AccountDetailPage() {
           </div>
         ) : (snapshots || []).length > 0 ? (
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+              <thead className="bg-gray-50 dark:bg-gray-900">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Date
+                    {t('accountDetail.date')}
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Balance
+                    {t('accountDetail.balance')}
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                 {(snapshots || [])
                   .filter((snapshot: AccountSnapshot) => snapshot.date) // Filter out null/undefined dates
                   .sort((a: AccountSnapshot, b: AccountSnapshot) => {
@@ -265,14 +267,14 @@ export function AccountDetailPage() {
                     return dateB.getTime() - dateA.getTime();
                   })
                   .map((snapshot: AccountSnapshot) => (
-                    <tr key={snapshot.date} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <tr key={snapshot.date} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
                         {snapshot.date && !isNaN(parse(snapshot.date, 'yyyy-MM-dd', new Date()).getTime())
                           ? format(parse(snapshot.date, 'yyyy-MM-dd', new Date()), 'MMM dd, yyyy')
-                          : 'Invalid date'}
+                          : t('accountDetail.invalidDate')}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        <span className="font-semibold text-gray-900">
+                        <span className="font-semibold text-gray-900 dark:text-gray-50">
                           {formatCurrency(snapshot.balance)}
                         </span>
                       </td>
@@ -282,21 +284,19 @@ export function AccountDetailPage() {
             </table>
           </div>
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            No snapshots recorded yet. Add one above to get started.
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+            {t('accountDetail.noSnapshots')}
           </div>
         )}
       </Card>
       
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <Modal isOpen onClose={() => setShowDeleteConfirm(false)} title="Delete Account" size="sm">
+        <Modal isOpen onClose={() => setShowDeleteConfirm(false)} title={t('accountDetail.deleteTitle')} size="sm">
           <div className="space-y-4">
-            <p className="text-gray-700">
-              Are you sure you want to delete <strong>{account.name}</strong>? This action cannot be undone.
-            </p>
-            <p className="text-sm text-gray-600">
-              All associated snapshots will be deleted.
+            <p className="text-gray-700 dark:text-gray-200" dangerouslySetInnerHTML={{ __html: t('accountDetail.deleteBody', { name: account.name }) }} />
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {t('accountDetail.deleteSnapshots')}
             </p>
             <div className="flex justify-end gap-3">
               <Button
@@ -304,14 +304,14 @@ export function AccountDetailPage() {
                 onClick={() => setShowDeleteConfirm(false)}
                 disabled={deleteAccountMutation.isPending}
               >
-                Cancel
+                {t('common.cancel')}
               </Button>
               <Button
                 onClick={handleDelete}
                 isLoading={deleteAccountMutation.isPending}
                 className="bg-red-600 hover:bg-red-700 text-white"
               >
-                Delete Account
+                {t('accountDetail.deleteTitle')}
               </Button>
             </div>
           </div>
@@ -343,6 +343,7 @@ interface EditAccountFormProps {
 function EditAccountForm({ account, onSuccess, onCancel }: EditAccountFormProps) {
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const [formData, setFormData] = useState<UpdateAccountRequest>({
     name: account.name,
     institution: account.institution || '',
@@ -360,7 +361,7 @@ function EditAccountForm({ account, onSuccess, onCancel }: EditAccountFormProps)
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['account', account.id] });
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      showToast('Account updated successfully', 'success');
+      showToast(t('accountDetail.saveChanges'), 'success');
       onSuccess();
     },
     onError: (error: Error) => {
@@ -371,20 +372,20 @@ function EditAccountForm({ account, onSuccess, onCancel }: EditAccountFormProps)
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) {
-      showToast('Account name is required', 'error');
+      showToast(t('common.required'), 'error');
       return;
     }
     updateMutation.mutate(formData);
   };
   
   return (
-    <Card className="mb-8 border-blue-200 bg-blue-50">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Edit Account</h3>
+    <Card className="mb-8 border-blue-200 bg-blue-50 dark:border-gray-700 dark:bg-gray-900">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">{t('accountDetail.editAccount')}</h3>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             type="text"
-            label="Account Name"
+            label={t('accountDetail.accountName')}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
@@ -392,46 +393,46 @@ function EditAccountForm({ account, onSuccess, onCancel }: EditAccountFormProps)
           />
           <Input
             type="text"
-            label="Institution (Optional)"
+            label={t('accountDetail.institution')}
             value={formData.institution}
             onChange={(e) => setFormData({ ...formData, institution: e.target.value })}
             placeholder="e.g., Chase Bank"
           />
           <Input
             type="text"
-            label="Type (Optional)"
+            label={t('accountDetail.type')}
             value={formData.type}
             onChange={(e) => setFormData({ ...formData, type: e.target.value })}
             placeholder="e.g., bank, credit, investment"
           />
           <Input
             type="text"
-            label="Currency"
+            label={t('accountDetail.currency')}
             value={formData.currency}
             onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() })}
             placeholder="USD"
           />
         </div>
         
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-white border border-gray-200">
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
           <input
             type="checkbox"
             id="isLiability"
             checked={formData.isLiability}
             onChange={(e) => setFormData({ ...formData, isLiability: e.target.checked })}
-            className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+            className="w-4 h-4 text-[var(--accent-color,#4f46e5)] bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded focus:ring-[var(--accent-color,#4f46e5)] focus:ring-2"
           />
-          <label htmlFor="isLiability" className="text-sm font-medium text-gray-700">
-            This is a liability account (e.g., credit card, loan)
+          <label htmlFor="isLiability" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+            {t('accountDetail.liabilityLabel')}
           </label>
         </div>
         
         <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
           <Button type="button" variant="outline" onClick={onCancel} disabled={updateMutation.isPending}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" isLoading={updateMutation.isPending}>
-            Save Changes
+            {t('accountDetail.saveChanges')}
           </Button>
         </div>
       </form>

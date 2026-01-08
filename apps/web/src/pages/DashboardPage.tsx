@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { format, parse, subMonths } from 'date-fns';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
 import { NetWorthHistoryResponse, MonthlySummary, NetWorthDataPoint } from '../types/api';
@@ -42,6 +43,7 @@ function ExpenseTooltip({ active, payload, expenseTotalExpense }: ExpenseTooltip
 }
 
 export function DashboardPage() {
+  const { t } = useTranslation();
   const { user, accessToken, isLoading: authLoading } = useAuth();
   const currentMonth = format(new Date(), 'yyyy-MM');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
@@ -201,8 +203,18 @@ export function DashboardPage() {
     ? ((netWorthChange / Math.abs(earliestNetWorth)) * 100).toFixed(1)
     : null;
 
-  const rangeLabels = { '1w': 'Last 7 days', '1m': 'Last 30 days', '3m': 'Last 90 days', '6m': 'Last 6 months' };
-  const rangeComparisons = { '1w': 'vs previous 7 days', '1m': 'vs last 30 days', '3m': 'vs last 90 days', '6m': 'vs last 6 months' };
+  const rangeLabels = {
+    '1w': t('dashboard.netWorthRanges.1w'),
+    '1m': t('dashboard.netWorthRanges.1m'),
+    '3m': t('dashboard.netWorthRanges.3m'),
+    '6m': t('dashboard.netWorthRanges.6m'),
+  };
+  const rangeComparisons = {
+    '1w': t('dashboard.netWorthComparisons.1w'),
+    '1m': t('dashboard.netWorthComparisons.1m'),
+    '3m': t('dashboard.netWorthComparisons.3m'),
+    '6m': t('dashboard.netWorthComparisons.6m'),
+  };
   
   // Determine if we have enough history for meaningful comparison
   const hasEnoughHistoryForComparison = filteredNetWorthPoints.length > 1;
@@ -221,19 +233,19 @@ export function DashboardPage() {
   const hasData = netWorthPoints.length > 0 || hasSummaryData;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with timestamp */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                Overview of your financial health
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('dashboard.title')}</h1>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {t('dashboard.subtitle')}
               </p>
             </div>
-            <div className="text-xs text-gray-400">
-              Last updated: {format(new Date(), 'MMM d, yyyy h:mm a')}
+            <div className="text-xs text-gray-400 dark:text-gray-500">
+              {t('dashboard.lastUpdated')}: {format(new Date(), 'MMM d, yyyy h:mm a')}
             </div>
           </div>
         </div>
@@ -261,8 +273,8 @@ export function DashboardPage() {
             {!error && !hasData && (
               <Card className="mb-8">
                 <EmptyState
-                  title="No data yet"
-                  description="No transactions found. Add your first transaction to see your dashboard populate."
+                  title={t('dashboard.noDataTitle')}
+                  description={t('dashboard.noDataDescription')}
                 />
               </Card>
             )}
@@ -270,7 +282,7 @@ export function DashboardPage() {
             {/* Stats Cards with improved styling */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
               <StatCard
-                label="Net Worth"
+                label={t('dashboard.netWorth')}
                 value={formatCurrency(latestNetWorth)}
                 trend={{
                   value: hasEnoughHistoryForComparison && netWorthChangePercent ? parseFloat(netWorthChangePercent) : 0,
@@ -285,7 +297,7 @@ export function DashboardPage() {
                 valueColor="text-blue-600"
               />
               <StatCard
-                label="Monthly Income"
+                label={t('dashboard.monthlyIncome')}
                 value={formatCurrency(monthlySummary?.totalIncome || 0)}
                 icon={
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -295,7 +307,7 @@ export function DashboardPage() {
                 valueColor="text-green-600"
               />
               <StatCard
-                label="Monthly Expenses"
+                label={t('dashboard.monthlyExpenses')}
                 value={formatCurrency(Math.abs(monthlySummary?.totalExpenses || 0))}
                 icon={
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -305,7 +317,7 @@ export function DashboardPage() {
                 valueColor="text-red-600"
               />
               <StatCard
-                label="Net This Month"
+                label={t('dashboard.netThisMonth')}
                 value={formatCurrency(monthlySummary?.net || 0)}
                 icon={
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -319,7 +331,7 @@ export function DashboardPage() {
             {/* Month Selector */}
             <div className="mb-6 max-w-xs">
               <Select
-                label="Select Month for Summary"
+                label={t('dashboard.selectMonth')}
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 options={monthOptions}
@@ -329,7 +341,7 @@ export function DashboardPage() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Net Worth Over Time */}
-              <Card title="Net Worth Over Time" description={rangeLabels[netWorthRange]}>
+              <Card title={t('dashboard.netWorthOverTime')} description={rangeLabels[netWorthRange]}>
                 <div className="space-y-4">
                   {/* Range Selector */}
                   <div className="flex gap-2">
@@ -390,7 +402,7 @@ export function DashboardPage() {
                         <svg className="w-16 h-16 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <p className="text-sm">No net worth data available</p>
+                        <p className="text-sm">{t('dashboard.noNetWorthData')}</p>
                       </div>
                     )}
                   </div>
@@ -398,7 +410,7 @@ export function DashboardPage() {
               </Card>
               
               {/* Expense Breakdown */}
-              <Card title="Expense Breakdown" description={`By category for ${format(selectedMonthDate, 'MMMM yyyy')}`}>
+              <Card title={t('dashboard.expenseBreakdown')} description={t('dashboard.expenseBreakdownFor', { month: format(selectedMonthDate, 'MMMM yyyy') })}>
                 <div className="h-80">
                   {expenseChartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
@@ -443,7 +455,7 @@ export function DashboardPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
                       </svg>
-                      <p className="text-sm">No expenses for selected month</p>
+                      <p className="text-sm">{t('dashboard.noExpenses')}</p>
                     </div>
                   )}
                 </div>
@@ -452,21 +464,21 @@ export function DashboardPage() {
             
             {/* Top Spending Category */}
             {monthlySummary && monthlySummary.expenseBreakdown.length > 0 && (
-              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 mt-6">
+              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700 mt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-2">
                       <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                       </svg>
-                      Top Spending Category
+                      {t('dashboard.topSpendingCategory')}
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Highest expense category this month
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      {t('dashboard.topSpendingDescription')}
                     </p>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900">
+                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-50">
                       {monthlySummary.expenseBreakdown[0].categoryName}
                     </div>
                     <div className="text-lg text-red-600 font-semibold">
@@ -478,7 +490,7 @@ export function DashboardPage() {
             )}
             
             {/* AI Insights Card (Beta) */}
-            <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200 mt-6">
+            <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 border-indigo-200 dark:border-gray-700 mt-6">
               <div className="flex items-start justify-between gap-4">
                 <div className="flex items-start gap-4 flex-1">
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white flex-shrink-0 mt-1">
@@ -487,11 +499,11 @@ export function DashboardPage() {
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      AI Insights <span className="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-1 rounded">Beta</span>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-2">
+                      {t('dashboard.aiInsightsLabel')} <span className="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-1 rounded">Beta</span>
                     </h3>
-                    <p className="text-sm text-gray-600 mt-2">
-                      AI Insights is being built to flag unusual spending, suggest smarter categorization, and generate weekly summaries. The UI is scaffolded; model-powered insights ship next.
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                      {t('dashboard.aiInsightsDescription')}
                     </p>
                   </div>
                 </div>
@@ -500,7 +512,7 @@ export function DashboardPage() {
                   className="flex-shrink-0"
                   disabled
                 >
-                  Coming soon
+                  {t('common.comingSoon')}
                 </Button>
               </div>
             </Card>

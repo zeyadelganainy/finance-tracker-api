@@ -9,6 +9,7 @@ import { AccountsPage } from './pages/AccountsPage';
 import { AccountDetailPage } from './pages/AccountDetailPage';
 import { AssetsPage } from './pages/AssetsPage';
 import { AIPage } from './pages/AIPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { LoginPage } from './pages/Login';
 import { RegisterPage } from './pages/Register';
 import { ProtectedRoute } from './auth/ProtectedRoute';
@@ -30,7 +31,7 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <BrowserRouter>
-            <main className="min-h-screen bg-gray-50">
+            <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
@@ -45,6 +46,7 @@ function App() {
                     <Route path="/accounts/:id" element={<AccountDetailPage />} />
                     <Route path="/assets" element={<AssetsPage />} />
                     <Route path="/ai" element={<AIPage />} />
+                    <Route path="/settings" element={<SettingsPage />} />
                   </Route>
                 </Route>
               </Routes>

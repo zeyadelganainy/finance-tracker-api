@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format, parse } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
 import { Transaction, PagedResponse, Category, CreateTransactionRequest } from '../types/api';
@@ -44,6 +45,7 @@ const isTransactionsQuery = (query: { queryKey?: readonly unknown[] }) =>
   Array.isArray(query.queryKey) && query.queryKey[0] === 'transactions';
 
 export function TransactionsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
   
@@ -97,7 +99,7 @@ export function TransactionsPage() {
     },
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      showToast('Transaction deleted successfully', 'success');
+      showToast(t('transactions.deleteSuccess'), 'success');
       setSelectedIds((prev) => prev.filter((x) => x !== id));
     },
     onError: (error: Error) => {
@@ -122,7 +124,7 @@ export function TransactionsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ predicate: isTransactionsQuery });
-      showToast('Transaction updated successfully', 'success');
+      showToast(t('transactions.updateSuccess'), 'success');
       setEditingId(null);
     },
     onError: (error: Error) => {
@@ -218,9 +220,9 @@ export function TransactionsPage() {
       setSelectedIds([]);
       setBulkDeleteConfirm(false);
       queryClient.invalidateQueries({ queryKey: ['transactions'] });
-      showToast('Selected transactions deleted', 'success');
+      showToast(t('transactions.bulkDeleteSuccess'), 'success');
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Bulk delete failed';
+      const message = error instanceof Error ? error.message : t('transactions.bulkDeleteFailed');
       showToast(message, 'error');
     } finally {
       setBulkDeleting(false);
@@ -228,15 +230,15 @@ export function TransactionsPage() {
   };
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                {totalFiltered} total transactions
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('transactions.title')}</h1>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {t(totalFiltered === 1 ? 'transactions.total' : 'transactions.total', { count: totalFiltered })}
               </p>
             </div>
             <div className="flex flex-wrap gap-2 justify-end">
@@ -246,14 +248,14 @@ export function TransactionsPage() {
                   onClick={() => setBulkDeleteConfirm(true)}
                   disabled={bulkDeleting}
                 >
-                  Delete Selected ({selectedIds.length})
+                  {t('transactions.deleteSelected', { count: selectedIds.length })}
                 </Button>
               )}
               <Button onClick={() => setShowCreateModal(true)}>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                New Transaction
+                {t('transactions.new')}
               </Button>
             </div>
           </div>
@@ -267,55 +269,55 @@ export function TransactionsPage() {
             className="h-11 w-full"
             onClick={() => setShowFiltersModal(true)}
           >
-            Filters
+            {t('transactions.filters')}
           </Button>
         </div>
 
         {/* Desktop Filters */}
         <div className="hidden md:block">
-          <Card className="mb-6">
+          <Card className="mb-6 dark:border-gray-800">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-gray-700">Filters</h3>
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('transactions.filters')}</h3>
                 {hasFilters && (
                   <Button variant="ghost" size="sm" onClick={handleResetFilters}>
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                    Reset Filters
+                    {t('transactions.resetFilters')}
                   </Button>
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Input
                   type="date"
-                  label="From Date"
+                  label={t('transactions.fromDate')}
                   value={filters.from || ''}
                   onChange={(e) => handleFilterChange('from', e.target.value || undefined)}
                 />
                 <Input
                   type="date"
-                  label="To Date"
+                  label={t('transactions.toDate')}
                   value={filters.to || ''}
                   onChange={(e) => handleFilterChange('to', e.target.value || undefined)}
                 />
                 <Select
-                  label="Category"
+                  label={t('transactions.category')}
                   value={filters.categoryId || ''}
                   onChange={(e) => handleFilterChange('categoryId', e.target.value || undefined)}
                   options={[
-                    { value: '', label: 'All Categories' },
+                    { value: '', label: t('transactions.allCategories') },
                     ...(categories || []).map((c) => ({ value: c.id.toString(), label: c.name })),
                   ]}
                 />
                 <Select
-                  label="Page Size"
+                  label={t('transactions.pageSize')}
                   value={filters.pageSize}
                   onChange={(e) => handleFilterChange('pageSize', parseInt(e.target.value))}
                   options={[
-                    { value: 10, label: '10 per page' },
-                    { value: 20, label: '20 per page' },
-                    { value: 50, label: '50 per page' },
+                    { value: 10, label: t('transactions.perPage', { count: 10 }) },
+                    { value: 20, label: t('transactions.perPage', { count: 20 }) },
+                    { value: 50, label: t('transactions.perPage', { count: 50 }) },
                   ]}
                 />
               </div>
@@ -343,38 +345,38 @@ export function TransactionsPage() {
 
             {/* Desktop Table */}
             <div className="hidden md:block">
-              <Card className="overflow-hidden">
+              <Card className="overflow-hidden dark:border-gray-800">
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
+                    <thead className="bg-gray-50 dark:bg-gray-900">
                       <tr>
                         <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
                           <input
                             ref={selectAllRef}
                             type="checkbox"
-                            className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                            className="h-4 w-4 text-[var(--accent-color,#4f46e5)] border-gray-300 dark:border-gray-700 rounded focus:ring-[var(--accent-color,#4f46e5)]"
                             checked={allPageSelected}
                             onChange={handleToggleSelectPage}
                           />
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Date
+                          {t('transactions.date')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Description
+                          {t('transactions.description')}
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Category
+                          {t('transactions.category')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Amount
+                          {t('transactions.amount')}
                         </th>
                         <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
-                          Actions
+                          {t('transactions.actions')}
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
                       {paginatedTransactions.map((transaction) => (
                         <TransactionRow
                           key={transaction.id}
@@ -398,7 +400,9 @@ export function TransactionsPage() {
             
             {/* Mobile Pagination */}
             <div className="md:hidden mt-6 space-y-2">
-              <div className="text-sm text-gray-700 text-center">Page {filters.page} of {totalPages}</div>
+              <div className="text-sm text-gray-700 dark:text-gray-300 text-center">
+                {t('transactions.pageLabel', { page: filters.page, total: totalPages })}
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
                   variant="outline"
@@ -407,7 +411,7 @@ export function TransactionsPage() {
                   onClick={() => handleFilterChange('page', filters.page - 1)}
                   disabled={filters.page === 1}
                 >
-                  Previous
+                  {t('transactions.prev')}
                 </Button>
                 <Button
                   variant="outline"
@@ -416,17 +420,19 @@ export function TransactionsPage() {
                   onClick={() => handleFilterChange('page', filters.page + 1)}
                   disabled={filters.page >= totalPages}
                 >
-                  Next
+                  {t('transactions.next')}
                 </Button>
               </div>
             </div>
 
             {/* Desktop Pagination */}
             <div className="hidden md:flex mt-6 flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-sm text-gray-700">
-                Showing <span className="font-medium">{totalFiltered === 0 ? 0 : startIndex + 1}</span> to{' '}
-                <span className="font-medium">{Math.min(startIndex + filters.pageSize, totalFiltered)}</span> of{' '}
-                <span className="font-medium">{totalFiltered}</span> results
+              <div className="text-sm text-gray-700 dark:text-gray-300">
+                {t('transactions.showingLabel', {
+                  from: totalFiltered === 0 ? 0 : startIndex + 1,
+                  to: Math.min(startIndex + filters.pageSize, totalFiltered),
+                  total: totalFiltered,
+                })}
               </div>
               <div className="flex items-center gap-2">
                 <Button
@@ -438,10 +444,10 @@ export function TransactionsPage() {
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
-                  Previous
+                  {t('transactions.prev')}
                 </Button>
-                <span className="text-sm text-gray-700 px-2">
-                  Page {filters.page} of {totalPages}
+                <span className="text-sm text-gray-700 dark:text-gray-300 px-2">
+                  {t('transactions.pageLabel', { page: filters.page, total: totalPages })}
                 </span>
                 <Button
                   variant="outline"
@@ -449,7 +455,7 @@ export function TransactionsPage() {
                   onClick={() => handleFilterChange('page', filters.page + 1)}
                   disabled={filters.page >= totalPages}
                 >
-                  Next
+                  {t('transactions.next')}
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
@@ -458,17 +464,31 @@ export function TransactionsPage() {
             </div>
           </>
         ) : (
-          <Card>
+          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
             <EmptyState
               icon={
-                <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                <svg
+                  className="w-12 h-12 text-gray-400 dark:text-gray-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
                 </svg>
               }
-              title="No transactions found"
-              description={hasFilters ? "Try adjusting your filters to see more results" : "Get started by adding your first transaction"}
+              title={hasFilters ? t('transactions.emptyFilteredTitle') : t('transactions.emptyTitle')}
+              description={
+                hasFilters
+                  ? t('transactions.emptyFilteredDescription')
+                  : t('transactions.emptyDescription')
+              }
               action={{
-                label: hasFilters ? "Reset Filters" : "Add Transaction",
+                label: hasFilters ? t('transactions.resetFilters') : t('transactions.new'),
                 onClick: hasFilters ? handleResetFilters : () => setShowCreateModal(true),
               }}
             />
@@ -561,6 +581,7 @@ function TransactionRow({
   selected,
   onToggleSelect,
 }: TransactionRowProps) {
+  const { t } = useTranslation();
   const [editData, setEditData] = useState({
     date: transaction.date,
     description: transaction.description || '',
@@ -587,9 +608,9 @@ function TransactionRow({
   
   if (isEditing) {
     return (
-      <tr className="bg-blue-50 border-l-4 border-blue-500">
+      <tr className="bg-blue-50 dark:bg-blue-900/20 border-l-4 border-blue-500 dark:border-blue-400">
         <td className="px-4 py-4">
-          <input type="checkbox" className="h-4 w-4 text-blue-600 border-gray-300 rounded" checked={selected} onChange={onToggleSelect} />
+          <input type="checkbox" className="h-4 w-4 accent-[var(--color-accent-600)] border-gray-300 dark:border-gray-700 rounded" checked={selected} onChange={onToggleSelect} />
         </td>
         <td className="px-6 py-4">
           <input
@@ -597,7 +618,7 @@ function TransactionRow({
             value={editData.date}
             onChange={(e) => setEditData({ ...editData, date: e.target.value })}
             onKeyDown={handleKeyPress}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 focus:ring-2 focus:ring-[var(--color-accent-500)] focus:border-[var(--color-accent-500)]"
             disabled={isSaving}
           />
         </td>
@@ -607,8 +628,8 @@ function TransactionRow({
             value={editData.description}
             onChange={(e) => setEditData({ ...editData, description: e.target.value })}
             onKeyDown={handleKeyPress}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Description"
+            className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 focus:ring-2 focus:ring-[var(--color-accent-500)] focus:border-[var(--color-accent-500)]"
+            placeholder={t('transactions.description')}
             disabled={isSaving}
           />
         </td>
@@ -617,7 +638,7 @@ function TransactionRow({
             value={editData.categoryId}
             onChange={(e) => setEditData({ ...editData, categoryId: e.target.value })}
             onKeyDown={handleKeyPress}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+            className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 focus:ring-2 focus:ring-[var(--color-accent-500)] focus:border-[var(--color-accent-500)]"
             disabled={isSaving}
           >
             {categories.map((c) => (
@@ -634,7 +655,7 @@ function TransactionRow({
             value={editData.amount}
             onChange={(e) => setEditData({ ...editData, amount: e.target.value })}
             onKeyDown={handleKeyPress}
-            className="w-full px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-right"
+            className="w-full px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg text-sm bg-white dark:bg-gray-900 focus:ring-2 focus:ring-[var(--color-accent-500)] focus:border-[var(--color-accent-500)] text-right"
             disabled={isSaving}
           />
         </td>
@@ -646,7 +667,7 @@ function TransactionRow({
               disabled={isSaving}
               isLoading={isSaving}
             >
-              Save
+              {t('common.save')}
             </Button>
             <Button
               size="sm"
@@ -654,7 +675,7 @@ function TransactionRow({
               onClick={onCancelEdit}
               disabled={isSaving}
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </div>
         </td>
@@ -666,20 +687,20 @@ function TransactionRow({
   const amountColor = isExpense ? 'text-red-600' : 'text-green-600';
   
   return (
-    <tr className="hover:bg-gray-50 transition-colors">
+    <tr className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
       <td className="px-4 py-4">
         <input
           type="checkbox"
-          className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+          className="h-4 w-4 accent-[var(--color-accent-600)] border-gray-300 dark:border-gray-700 rounded"
           checked={selected}
           onChange={onToggleSelect}
         />
       </td>
-      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">
+      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100 font-medium">
         {format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}
       </td>
-      <td className="px-6 py-4 text-sm text-gray-900">
-        {transaction.description || <span className="text-gray-400 italic">No description</span>}
+      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-100">
+        {transaction.description || <span className="text-gray-400 dark:text-gray-500 italic">{t('transactions.noDescription')}</span>}
       </td>
       <td className="px-6 py-4 whitespace-nowrap text-sm">
         <Badge variant="default">
@@ -693,8 +714,8 @@ function TransactionRow({
         <div className="flex items-center justify-end gap-2">
           <button
             onClick={onEdit}
-            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-            title="Edit transaction"
+            className="p-1.5 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
+            title={t('common.edit')}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -702,8 +723,8 @@ function TransactionRow({
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-            title="Delete transaction"
+            className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+            title={t('common.delete')}
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -729,6 +750,7 @@ function TransactionCardList({
   selectedIds: number[];
   onToggleSelect: (id: number) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="space-y-3">
       {transactions.map((transaction) => {
@@ -741,22 +763,22 @@ function TransactionCardList({
               <div className="flex items-center gap-2">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                  className="h-4 w-4 accent-[var(--color-accent-600)] border-gray-300 dark:border-gray-700 rounded"
                   checked={selected}
                   onChange={() => onToggleSelect(transaction.id)}
                 />
-                <span className="text-sm text-gray-600">{format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">{format(parseTxnDate(transaction.date), 'MMM dd, yyyy')}</span>
               </div>
               <span className={`text-lg font-semibold text-right ${amountColor}`}>
                 {formatCurrency(transaction.amount)}
               </span>
             </div>
 
-            <div className="text-sm text-gray-900 mt-2 line-clamp-2">
+            <div className="text-sm text-gray-900 dark:text-gray-100 mt-2 line-clamp-2">
               {transaction.description ? (
                 transaction.description
               ) : (
-                <span className="text-gray-400 italic">No description</span>
+                <span className="text-gray-400 dark:text-gray-500 italic">{t('transactions.noDescription')}</span>
               )}
             </div>
 
@@ -765,20 +787,20 @@ function TransactionCardList({
               <span
                 className={
                   isExpense
-                    ? 'text-xs px-2 py-1 rounded-full bg-red-50 text-red-700 border border-red-200'
-                    : 'text-xs px-2 py-1 rounded-full bg-green-50 text-green-700 border border-green-200'
+                    ? 'text-xs px-2 py-1 rounded-full bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-800'
+                    : 'text-xs px-2 py-1 rounded-full bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
                 }
               >
-                {isExpense ? 'Expense' : 'Income'}
+                {isExpense ? t('transactions.expense') : t('transactions.income')}
               </span>
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Button variant="outline" size="lg" className="h-11 w-full" onClick={() => onEdit(transaction)}>
-                Edit
+                {t('common.edit')}
               </Button>
               <Button variant="danger" size="lg" className="h-11 w-full" onClick={() => onDelete(transaction.id)}>
-                Delete
+                {t('common.delete')}
               </Button>
             </div>
           </Card>
@@ -843,12 +865,13 @@ function MobileEditTransactionModal({
     });
   };
 
+  const { t } = useTranslation();
   return (
-    <Modal isOpen onClose={onClose} title="Edit Transaction" size="md">
+    <Modal isOpen onClose={onClose} title={t('transactions.editTitle')} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           type="date"
-          label="Date"
+          label={t('transactions.date')}
           value={formData.date}
           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
           required
@@ -856,13 +879,13 @@ function MobileEditTransactionModal({
         <Input
           type="number"
           step="0.01"
-          label="Amount"
+          label={t('transactions.amount')}
           value={formData.amount}
           onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
           required
         />
         <CategorySelect
-          label="Category"
+          label={t('transactions.category')}
           categories={categories}
           value={formData.categoryId}
           onChange={(id) => setFormData({ ...formData, categoryId: id })}
@@ -872,28 +895,28 @@ function MobileEditTransactionModal({
           warning={categoryWarning}
         />
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">Description</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">{t('transactions.description')}</label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all duration-200 resize-none"
-            placeholder="Optional description"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-[var(--color-accent-500)] focus:border-[var(--color-accent-500)] focus:outline-none transition-all duration-200 resize-none"
+            placeholder={t('addTransaction.descriptionPlaceholder')}
           />
         </div>
         <div className="grid grid-cols-2 gap-3 pt-2">
           <Button type="button" variant="outline" size="lg" className="h-11 w-full" onClick={onClose} disabled={isSaving}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" size="lg" className="h-11 w-full" isLoading={isSaving} disabled={isSaving}>
-            Save
+            {t('common.save')}
           </Button>
         </div>
       </form>
       {showCategoryModal && (
-        <Modal isOpen onClose={() => setShowCategoryModal(false)} title="Create Category" size="sm">
+        <Modal isOpen onClose={() => setShowCategoryModal(false)} title={t('categories.createModalTitle')} size="sm">
           <CategoryForm
-            submitLabel="Create"
+            submitLabel={t('categories.createSubmit')}
             onSubmit={async (values) => {
               const created = await onCreateCategory({ name: values.name, type: values.type || undefined });
               setFormData((prev) => ({ ...prev, categoryId: created.id }));
@@ -935,46 +958,47 @@ function MobileFiltersModal({
     onClose();
   };
 
+  const { t } = useTranslation();
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title="Filters" size="md">
+    <Modal isOpen={isOpen} onClose={onClose} title={t('transactions.filters')} size="md">
       <form onSubmit={handleSubmit} className="space-y-4">
         <Input
           type="date"
-          label="From Date"
+          label={t('transactions.fromDate')}
           value={localFilters.from || ''}
           onChange={(e) => setLocalFilters({ ...localFilters, from: e.target.value || undefined })}
         />
         <Input
           type="date"
-          label="To Date"
+          label={t('transactions.toDate')}
           value={localFilters.to || ''}
           onChange={(e) => setLocalFilters({ ...localFilters, to: e.target.value || undefined })}
         />
         <Select
-          label="Category"
+          label={t('transactions.category')}
           value={localFilters.categoryId || ''}
           onChange={(e) => setLocalFilters({ ...localFilters, categoryId: e.target.value || undefined })}
           options={[
-            { value: '', label: 'All Categories' },
+            { value: '', label: t('transactions.allCategories') },
             ...(categories || []).map((c) => ({ value: c.id.toString(), label: c.name })),
           ]}
         />
         <Select
-          label="Page Size"
+          label={t('transactions.pageSize')}
           value={localFilters.pageSize}
           onChange={(e) => setLocalFilters({ ...localFilters, pageSize: parseInt(e.target.value) })}
           options={[
-            { value: 10, label: '10 per page' },
-            { value: 20, label: '20 per page' },
-            { value: 50, label: '50 per page' },
+            { value: 10, label: t('transactions.perPage', { count: 10 }) },
+            { value: 20, label: t('transactions.perPage', { count: 20 }) },
+            { value: 50, label: t('transactions.perPage', { count: 50 }) },
           ]}
         />
         <div className="grid grid-cols-2 gap-3 pt-2">
           <Button type="button" variant="outline" size="lg" className="h-11 w-full" onClick={onClose}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" size="lg" className="h-11 w-full">
-            Apply
+            {t('common.apply')}
           </Button>
         </div>
       </form>
@@ -993,10 +1017,11 @@ interface CreateTransactionModalProps {
 
 function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCategory, categoriesLoading }: CreateTransactionModalProps) {
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState({
     amount: '',
-    date: format(new Date(), 'yyyy-MM-dd'), // Local time, no timezone shift
+    date: format(new Date(), 'yyyy-MM-dd'),
     categoryId: categories[0]?.id || '',
     description: '',
   });
@@ -1008,25 +1033,18 @@ function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCatego
       setFormData((prev) => ({ ...prev, categoryId: categories[0].id }));
     }
     if (formData.categoryId && !categories.find((c) => c.id === formData.categoryId)) {
-      setCategoryWarning('Selected category no longer exists. Please choose another.');
+      setCategoryWarning(t('addTransaction.categoryMissing'));
       setFormData((prev) => ({ ...prev, categoryId: '' }));
     } else {
       setCategoryWarning(null);
     }
-  }, [categories, formData.categoryId]);
-  
+  }, [categories, formData.categoryId, t]);
+
   const createMutation = useMutation({
     mutationFn: (data: CreateTransactionRequest) =>
-      apiFetch<Transaction>('/transactions', {
-        method: 'POST',
-        body: JSON.stringify(data),
-      }),
-    onSuccess: (created) => {
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug(`[CreateTransaction] raw date=${created?.date}`);
-      }
-      showToast('Transaction created successfully', 'success');
+      apiFetch<Transaction>('/transactions', { method: 'POST', body: JSON.stringify(data) }),
+    onSuccess: () => {
+      showToast(t('transactions.createSuccess'), 'success');
       onSuccess();
       queryClient.invalidateQueries({ predicate: isTransactionsQuery });
     },
@@ -1034,7 +1052,7 @@ function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCatego
       showToast(error.message, 'error');
     },
   });
-  
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     createMutation.mutate({
@@ -1044,22 +1062,22 @@ function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCatego
       description: formData.description || undefined,
     });
   };
-  
+
   const isExpense = formData.amount && parseFloat(formData.amount) < 0;
-  
+
   return (
-    <Modal isOpen onClose={onClose} title="New Transaction" size="md">
+    <Modal isOpen onClose={onClose} title={t('transactions.new')} size="md">
       <form onSubmit={handleSubmit} className="space-y-5">
         <Input
           type="number"
           step="0.01"
-          label="Amount"
+          label={t('transactions.amount')}
           value={formData.amount}
           onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
           required
-          helperText="Use negative for expenses (e.g., -50.00), positive for income (e.g., 3000.00)"
+          helperText={t('addTransaction.helper')}
         />
-        
+
         {formData.amount && (
           <div className={`p-3 rounded-lg ${isExpense ? 'bg-red-50 border border-red-200' : 'bg-green-50 border border-green-200'}`}>
             <div className="flex items-center gap-2">
@@ -1069,7 +1087,7 @@ function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCatego
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
                   </svg>
                   <span className="text-sm font-medium text-red-700">
-                    Expense: {formatCurrency(parseFloat(formData.amount))}
+                    {t('transactions.expense')}: {formatCurrency(parseFloat(formData.amount))}
                   </span>
                 </>
               ) : (
@@ -1078,23 +1096,23 @@ function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCatego
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
                   </svg>
                   <span className="text-sm font-medium text-green-700">
-                    Income: {formatCurrency(parseFloat(formData.amount))}
+                    {t('transactions.income')}: {formatCurrency(parseFloat(formData.amount))}
                   </span>
                 </>
               )}
             </div>
           </div>
         )}
-        
+
         <Input
           type="date"
-          label="Date"
+          label={t('transactions.date')}
           value={formData.date}
           onChange={(e) => setFormData({ ...formData, date: e.target.value })}
           required
         />
         <CategorySelect
-          label="Category"
+          label={t('transactions.category')}
           categories={categories}
           value={formData.categoryId}
           onChange={(id) => setFormData({ ...formData, categoryId: id })}
@@ -1104,30 +1122,30 @@ function CreateTransactionModal({ categories, onClose, onSuccess, onCreateCatego
           warning={categoryWarning}
         />
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1.5">
-            Description
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+            {t('transactions.description')}
           </label>
           <textarea
             value={formData.description}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             rows={3}
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:outline-none transition-all duration-200 resize-none"
-            placeholder="Optional description"
+            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-[var(--color-accent-500)] focus:border-[var(--color-accent-500)] focus:outline-none transition-all duration-200 resize-none"
+            placeholder={t('addTransaction.descriptionPlaceholder')}
           />
         </div>
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
           <Button type="button" variant="outline" onClick={onClose} disabled={createMutation.isPending}>
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" isLoading={createMutation.isPending}>
-            Create Transaction
+            {t('addTransaction.submit')}
           </Button>
         </div>
       </form>
       {showCategoryModal && (
-        <Modal isOpen onClose={() => setShowCategoryModal(false)} title="Create Category" size="sm">
+        <Modal isOpen onClose={() => setShowCategoryModal(false)} title={t('categories.createModalTitle')} size="sm">
           <CategoryForm
-            submitLabel="Create"
+            submitLabel={t('categories.createSubmit')}
             onSubmit={async (values) => {
               const created = await onCreateCategory({ name: values.name, type: values.type || undefined });
               setFormData((prev) => ({ ...prev, categoryId: created.id }));

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../lib/apiClient';
 import { Asset, CreateAssetRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
@@ -13,6 +14,7 @@ import { EmptyState } from '../components/ui/EmptyState';
 import { useAssetValuation } from '../hooks/useAI';
 
 export function AssetsPage() {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [showCreateModal, setShowCreateModal] = useState(false);
   
@@ -26,22 +28,24 @@ export function AssetsPage() {
   const { data: valuationData } = useAssetValuation();
   
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Assets</h1>
-              <p className="mt-2 text-sm text-gray-600">
-                {(assets || []).length} asset{(assets || []).length !== 1 ? 's' : ''}
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('assets.title')}</h1>
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+                {(assets || []).length === 1
+                  ? t('assets.count', { count: (assets || []).length })
+                  : t('assets.countPlural', { count: (assets || []).length })}
               </p>
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              New Asset
+              {t('assets.new')}
             </Button>
           </div>
         </div>
@@ -70,7 +74,7 @@ export function AssetsPage() {
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900">{asset.name}</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{asset.name}</h3>
                         
                         {/* Badges */}
                         <div className="flex flex-wrap gap-2 mt-2">
@@ -83,14 +87,14 @@ export function AssetsPage() {
                     {/* Cost Basis Details */}
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
-                        <p className="text-xs text-gray-500">Quantity</p>
-                        <p className="font-semibold text-gray-900">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('assets.quantity')}</p>
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">
                           {asset.quantity} {asset.unit ? asset.unit : ''}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-gray-500">Cost Basis</p>
-                        <p className="font-semibold text-gray-900">
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{t('assets.costBasis')}</p>
+                        <p className="font-semibold text-gray-900 dark:text-gray-100">
                           ${asset.costBasisTotal.toFixed(2)}
                         </p>
                       </div>
@@ -98,9 +102,9 @@ export function AssetsPage() {
                     
                     {/* Additional Info */}
                     {(asset.purchaseDate || asset.notes) && (
-                      <div className="pt-2 border-t border-gray-100 text-xs text-gray-600 space-y-1">
+                      <div className="pt-2 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-600 dark:text-gray-400 space-y-1">
                         {asset.purchaseDate && (
-                          <p>Purchased {new Date(asset.purchaseDate).toLocaleDateString()}</p>
+                          <p>{t('assets.purchased')} {new Date(asset.purchaseDate).toLocaleDateString()}</p>
                         )}
                         {asset.notes && <p className="italic">{asset.notes}</p>}
                       </div>
@@ -121,10 +125,10 @@ export function AssetsPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               )}
-              title="No assets yet"
-              description="Track your investments by creating asset records with quantity, cost basis, and ROI data"
+              title={t('assets.noAssets')}
+              description={t('assets.noAssetsDescription')}
               action={{
-                label: "Create Asset",
+                label: t('assets.createAsset'),
                 onClick: () => setShowCreateModal(true),
               }}
             />
@@ -153,6 +157,7 @@ interface CreateAssetModalProps {
 }
 
 function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
+  const { t } = useTranslation();
   const { showToast } = useToast();
   const [formData, setFormData] = useState({
     name: '',
@@ -172,7 +177,7 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      showToast('Asset created successfully', 'success');
+      showToast(t('assets.createSuccess'), 'success');
       onSuccess();
     },
     onError: (error: Error) => {
@@ -185,22 +190,22 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
     
     // Validation
     if (!formData.name.trim()) {
-      showToast('Asset name is required', 'error');
+      showToast(t('common.required'), 'error');
       return;
     }
     
     if (!formData.assetClass.trim()) {
-      showToast('Asset class is required', 'error');
+      showToast(t('common.required'), 'error');
       return;
     }
     
     if (!formData.quantity || parseFloat(formData.quantity) <= 0) {
-      showToast('Quantity must be greater than 0', 'error');
+      showToast(t('common.required'), 'error');
       return;
     }
     
     if (!formData.costBasisTotal || parseFloat(formData.costBasisTotal) < 0) {
-      showToast('Cost basis must be 0 or greater', 'error');
+      showToast(t('common.required'), 'error');
       return;
     }
     
@@ -208,13 +213,13 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
     
     // Stock-specific validation
     if (assetClass === 'stock' && !formData.ticker.trim()) {
-      showToast('Ticker is required for stocks', 'error');
+      showToast(t('assets.createModal.noteStock'), 'error');
       return;
     }
     
     // Metal-specific validation
     if (assetClass === 'metal' && !formData.unit.trim()) {
-      showToast('Unit is required for metals (e.g., oz, g, kg)', 'error');
+      showToast(t('assets.createModal.noteMetal'), 'error');
       return;
     }
     
@@ -235,22 +240,22 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
   const assetClass = formData.assetClass.toLowerCase();
   
   return (
-    <Modal isOpen onClose={onClose} title="New Asset" size="lg">
+    <Modal isOpen onClose={onClose} title={t('assets.createModal.title')} size="lg">
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Basic Info */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             type="text"
-            label="Asset Name"
+            label={t('assets.createModal.assetName')}
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
             required
-            placeholder="e.g., Apple Stock, Bitcoin, Gold"
+            placeholder={t('assets.createModal.placeholder')}
             autoFocus
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Asset Class <span className="text-red-500">*</span>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              {t('assets.createModal.assetClass')} <span className="text-red-500">*</span>
             </label>
             <select
               value={formData.assetClass}
@@ -263,7 +268,7 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
                 });
               }}
               required
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-transparent transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             >
               <option value="stock">Stock</option>
               <option value="crypto">Crypto</option>
@@ -276,9 +281,9 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
         
         {/* Asset Class Specific Fields */}
         {(assetClass === 'stock' || assetClass === 'crypto') && (
-          <Input
-            type="text"
-            label={`Ticker ${assetClass === 'stock' ? '(Required)' : '(Optional)'}`}
+            <Input
+              type="text"
+              label={assetClass === 'stock' ? t('assets.createModal.tickerRequired') : t('assets.createModal.tickerOptional')}
             value={formData.ticker}
             onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
             required={assetClass === 'stock'}
@@ -298,8 +303,8 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
             placeholder="0.00"
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Unit {assetClass === 'metal' && <span className="text-red-500">*</span>}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+              {t('assets.createModal.unit')} {assetClass === 'metal' && <span className="text-red-500">*</span>}
             </label>
             {assetClass === 'stock' ? (
               <input
@@ -325,19 +330,19 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
         <Input
           type="number"
           step="0.01"
-          label="Total Cost Basis"
+          label={t('assets.createModal.totalCostBasis')}
           value={formData.costBasisTotal}
           onChange={(e) => setFormData({ ...formData, costBasisTotal: e.target.value })}
           required
           placeholder="0.00"
-          helperText="Total amount paid for this asset"
+          helperText={t('assets.createModal.helper')}
         />
         
         {/* Optional Fields */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
             type="date"
-            label="Purchase Date (Optional)"
+            label={t('assets.createModal.purchaseDate')}
             value={formData.purchaseDate}
             onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
           />
@@ -345,25 +350,25 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
         
         {/* Notes */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Notes (Optional)
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+            {t('assets.createModal.notes')}
           </label>
           <textarea
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
             placeholder="e.g., Investment grade gold bars, tech sector, etc."
             rows={3}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-transparent transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
           />
         </div>
         
         {/* Helper Text */}
-        <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
-          <p className="text-sm text-gray-700">
-            <strong>Note:</strong> {assetClass === 'stock' && 'Ticker is required for stocks.'}
-            {assetClass === 'metal' && 'Unit (oz, g, kg) is required for metals.'}
-            {assetClass === 'crypto' && 'Enter crypto symbol for reference.'}
-            {!['stock', 'metal', 'crypto'].includes(assetClass) && 'Fill in available information for your asset type.'}
+        <div className="p-3 rounded-lg bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-gray-700">
+          <p className="text-sm text-gray-700 dark:text-gray-200">
+            <strong>Note:</strong> {assetClass === 'stock' && t('assets.createModal.noteStock')}
+            {assetClass === 'metal' && t('assets.createModal.noteMetal')}
+            {assetClass === 'crypto' && t('assets.createModal.noteCrypto')}
+            {!['stock', 'metal', 'crypto'].includes(assetClass) && t('assets.createModal.noteDefault')}
           </p>
         </div>
         
@@ -375,10 +380,10 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
             onClick={onClose}
             disabled={createMutation.isPending}
           >
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button type="submit" isLoading={createMutation.isPending}>
-            Create Asset
+            {t('assets.createModal.create')}
           </Button>
         </div>
       </form>
@@ -392,6 +397,7 @@ interface ValuationSectionProps {
 }
 
 function ValuationSection({ valuation }: ValuationSectionProps) {
+  const { t } = useTranslation();
   const [showTooltip, setShowTooltip] = useState(false);
   
   return (
@@ -399,15 +405,15 @@ function ValuationSection({ valuation }: ValuationSectionProps) {
       <div className="space-y-2">
         {/* Current Value */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-600">Current Value</span>
-          <span className="text-sm font-semibold text-gray-900">
+          <span className="text-xs text-gray-600 dark:text-gray-400">{t('assets.currentValue')}</span>
+          <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
             {valuation?.currentValue ? `$${valuation.currentValue.toFixed(2)}` : '—'}
           </span>
         </div>
         
         {/* ROI */}
         <div className="flex items-center justify-between">
-          <span className="text-xs text-gray-600">ROI</span>
+          <span className="text-xs text-gray-600 dark:text-gray-400">{t('assets.roi')}</span>
           <span className={`text-sm font-semibold ${
             valuation?.roiPercentage
               ? valuation.roiPercentage >= 0
@@ -426,7 +432,7 @@ function ValuationSection({ valuation }: ValuationSectionProps) {
               variant="warning"
               className="text-xs"
             >
-              Valuation coming soon
+              {t('assets.valuationComing')}
             </Badge>
             <button
               type="button"
@@ -441,8 +447,8 @@ function ValuationSection({ valuation }: ValuationSectionProps) {
           
           {/* Tooltip */}
           {showTooltip && (
-            <div className="mt-2 p-2 text-xs text-gray-700 bg-gray-50 rounded border border-gray-200">
-              ROI requires current market price. This will be calculated automatically once market data integration is added.
+            <div className="mt-2 p-2 text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-800">
+              {t('assets.valuationTooltip')}
             </div>
           )}
         </div>

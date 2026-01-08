@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
@@ -24,6 +25,7 @@ export function CategoryForm({
   submitting,
   submitLabel = 'Save',
 }: CategoryFormProps) {
+  const { t } = useTranslation();
   const [values, setValues] = useState<CategoryFormValues>({
     name: initialValues?.name || '',
     type: (initialValues?.type as 'expense' | 'income' | undefined) || '',
@@ -45,7 +47,7 @@ export function CategoryForm({
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <Input
-        label="Name"
+        label={t('categories.name')}
         value={values.name}
         onChange={(e) => setValues((prev) => ({ ...prev, name: e.target.value }))}
         required
@@ -53,19 +55,19 @@ export function CategoryForm({
         autoFocus
       />
       <Select
-        label="Type"
+        label={t('categories.type')}
         value={values.type || ''}
         onChange={(e) => setValues((prev) => ({ ...prev, type: e.target.value as CategoryFormValues['type'] }))}
         options={[
-          { value: '', label: 'Select type (optional)' },
-          { value: 'expense', label: 'Expense' },
-          { value: 'income', label: 'Income' },
+          { value: '', label: t('categories.optionalType') },
+          { value: 'expense', label: t('categories.expense') },
+          { value: 'income', label: t('categories.income') },
         ]}
       />
       <div className="flex justify-end gap-3 pt-2">
         {onCancel ? (
           <Button type="button" variant="outline" onClick={onCancel} disabled={submitting}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         ) : null}
         <Button type="submit" isLoading={submitting} disabled={submitting}>
