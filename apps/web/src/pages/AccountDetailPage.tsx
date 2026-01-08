@@ -12,6 +12,7 @@ import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { formatCurrency } from '../lib/utils';
+import { ImportTransactionsModal } from '../components/transactions/ImportTransactionsModal';
 
 export function AccountDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +25,7 @@ export function AccountDetailPage() {
   const [balance, setBalance] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   
   // Fetch account details
   const { data: account, isLoading: loadingAccount } = useQuery({
@@ -137,6 +139,12 @@ export function AccountDetailPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => setShowImportModal(true)}>
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+              </svg>
+              Import Transactions
+            </Button>
             <Button variant="outline" onClick={() => setIsEditMode(!isEditMode)}>
               {isEditMode ? 'Cancel' : 'Edit'}
             </Button>
@@ -247,11 +255,21 @@ export function AccountDetailPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {(snapshots || [])
-                  .sort((a, b) => parse(b.date, 'yyyy-MM-dd', new Date()).getTime() - parse(a.date, 'yyyy-MM-dd', new Date()).getTime())
-                  .map((snapshot) => (
+                  .filter((snapshot: AccountSnapshot) => snapshot.date) // Filter out null/undefined dates
+                  .sort((a: AccountSnapshot, b: AccountSnapshot) => {
+                    // Safely parse dates with fallback to epoch if invalid
+                    const dateA = a.date ? parse(a.date, 'yyyy-MM-dd', new Date()) : new Date(0);
+                    const dateB = b.date ? parse(b.date, 'yyyy-MM-dd', new Date()) : new Date(0);
+                    // Check for invalid dates and return 0 if either is invalid
+                    if (isNaN(dateB.getTime()) || isNaN(dateA.getTime())) return 0;
+                    return dateB.getTime() - dateA.getTime();
+                  })
+                  .map((snapshot: AccountSnapshot) => (
                     <tr key={snapshot.date} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {format(parse(snapshot.date, 'yyyy-MM-dd', new Date()), 'MMM dd, yyyy')}
+                        {snapshot.date && !isNaN(parse(snapshot.date, 'yyyy-MM-dd', new Date()).getTime())
+                          ? format(parse(snapshot.date, 'yyyy-MM-dd', new Date()), 'MMM dd, yyyy')
+                          : 'Invalid date'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
                         <span className="font-semibold text-gray-900">
@@ -299,6 +317,18 @@ export function AccountDetailPage() {
           </div>
         </Modal>
       )}
+
+      {/* Import Transactions Modal */}
+      <ImportTransactionsModal
+        isOpen={showImportModal}
+        onClose={() => setShowImportModal(false)}
+        accountId={id!}
+        onImportSuccess={() => {
+          queryClient.invalidateQueries({ queryKey: ['account-snapshots', id] });
+          queryClient.invalidateQueries({ queryKey: ['account', id] });
+          setShowImportModal(false);
+        }}
+      />
     </div>
   );
 }
