@@ -43,9 +43,15 @@ public class PortfolioRoiService : IPortfolioRoiService
         var itemsWithErrors = 0;
 
         // Collect all tickers for batch fetching
+        // Special-case metals with missing ticker: default to XAU
         var tickersToFetch = assets
-            .Where(a => !string.IsNullOrWhiteSpace(a.Ticker))
-            .Select(a => a.Ticker!)
+            .Select(a =>
+            {
+                var hasTicker = !string.IsNullOrWhiteSpace(a.Ticker);
+                var isMetal = string.Equals(a.AssetClass, "metal", StringComparison.OrdinalIgnoreCase);
+                return hasTicker ? a.Ticker! : (isMetal ? "XAU" : null);
+            })
+            .Where(t => !string.IsNullOrWhiteSpace(t))
             .Distinct()
             .ToList();
 
@@ -63,20 +69,24 @@ public class PortfolioRoiService : IPortfolioRoiService
         // Process each asset
         foreach (var asset in assets)
         {
+            var isMetal = string.Equals(asset.AssetClass, "metal", StringComparison.OrdinalIgnoreCase);
+            var tickerToUse = !string.IsNullOrWhiteSpace(asset.Ticker) ? asset.Ticker! : (isMetal ? "XAU" : null);
+
             var item = new PortfolioRoiItemDto
             {
                 AssetId = asset.Id,
                 Name = asset.Name,
                 AssetClass = asset.AssetClass,
-                Ticker = asset.Ticker,
+                // Expose the effective ticker for pricing (XAU for gold when missing)
+                Ticker = tickerToUse ?? asset.Ticker,
                 Quantity = asset.Quantity,
                 Unit = asset.Unit,
                 CostBasisTotal = asset.CostBasisTotal,
                 Currency = currency
             };
 
-            // Handle missing ticker
-            if (string.IsNullOrWhiteSpace(asset.Ticker))
+            // Handle missing ticker for non-metal assets
+            if (string.IsNullOrWhiteSpace(tickerToUse))
             {
                 item.Error = "No ticker provided; cannot price this asset.";
                 item.IsQuoteStale = true;
@@ -96,7 +106,7 @@ public class PortfolioRoiService : IPortfolioRoiService
             }
 
             // Get quote
-            if (!quotes.TryGetValue(asset.Ticker, out var quote))
+            if (!quotes.TryGetValue(tickerToUse, out var quote))
             {
                 item.Error = "Failed to fetch quote for this ticker.";
                 item.IsQuoteStale = true;

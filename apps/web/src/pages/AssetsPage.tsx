@@ -218,11 +218,9 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
       return;
     }
     
-      // Metal (gold) validation: require unit and ticker (default XAU if empty)
+      // Metal (gold) validation: require unit; default ticker to XAU if missing
       if (assetClass === 'metal') {
-        const unitMissing = !formData.unit.trim();
-        const tickerMissing = !formData.ticker.trim();
-        if (unitMissing || tickerMissing) {
+        if (!formData.unit.trim()) {
           showToast(t('assets.createModal.noteMetal'), 'error');
           return;
         }
@@ -231,7 +229,9 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
     const submitData: CreateAssetRequest = {
       name: formData.name.trim(),
       assetClass,
-      ticker: formData.ticker.trim() || undefined,
+      ticker: (assetClass === 'metal'
+        ? (formData.ticker?.trim() || 'XAU')
+        : formData.ticker.trim() || undefined),
       quantity: parseFloat(formData.quantity),
       unit: formData.unit.trim() || undefined,
       costBasisTotal: parseFloat(formData.costBasisTotal),
