@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../lib/apiClient';
 import { Account, CreateAccountRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
+import { useSettings } from '../settings/SettingsProvider';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Modal } from '../components/ui/Modal';
@@ -133,11 +134,12 @@ interface CreateAccountModalProps {
 function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
   const { showToast } = useToast();
   const { t } = useTranslation();
+  const { settings } = useSettings();
   const [formData, setFormData] = useState({
     name: '',
     institution: '',
     type: 'checking',
-    currency: 'USD',
+    currency: settings.currency,
     isLiability: false,
   });
   
@@ -201,7 +203,7 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
           type="text"
           label={t('accountsList.currency')}
           value={formData.currency}
-          onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() })}
+          onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() as 'CAD' | 'USD' | 'EUR' | 'GBP' })}
           placeholder="USD"
         />
         <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
