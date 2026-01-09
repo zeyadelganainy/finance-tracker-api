@@ -50,11 +50,11 @@ export function LoginPage() {
       about={<AboutWealthWise />}
       mobileAbout={<AboutWealthWise variant="mobile" />}
     >
-      <div className="bg-white/90 dark:bg-gray-900/80 backdrop-blur shadow-xl border border-gray-100 dark:border-gray-800 rounded-2xl p-8 sm:p-10 space-y-8">
+      <div className="bg-white/90 backdrop-blur shadow-xl border border-gray-100 rounded-2xl p-8 sm:p-10 space-y-8">
         <div className="space-y-2 text-center">
           <p className="text-xs font-semibold tracking-[0.2em] text-gray-500 uppercase">{t('auth.welcome')}</p>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('auth.signIn')}</h1>
-          <p className="text-sm text-gray-600 dark:text-gray-400">{t('auth.signInDescription')}</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t('auth.signIn')}</h1>
+          <p className="text-sm text-gray-600">{t('auth.signInDescription')}</p>
         </div>
 
         {info && (
@@ -84,24 +84,24 @@ export function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">{t('auth.email')}</label>
+            <label className="block text-sm font-medium text-gray-800">{t('auth.email')}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
+              className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
               required
               autoComplete="email"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">{t('auth.password')}</label>
+            <label className="block text-sm font-medium text-gray-800">{t('auth.password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 dark:border-gray-700 rounded-lg px-3.5 py-2.5 text-gray-900 dark:text-gray-100 bg-white dark:bg-gray-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
+              className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
               required
               autoComplete="current-password"
             />
@@ -123,7 +123,7 @@ export function LoginPage() {
                 <div className="w-full border-t border-gray-200" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400">{t('auth.or')}</span>
+                <span className="px-2 bg-white text-gray-500">{t('auth.or')}</span>
               </div>
             </div>
 
