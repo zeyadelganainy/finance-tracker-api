@@ -260,9 +260,9 @@ public class MarketDataService : IMarketDataService
                     break;
             }
 
-            // Parse timestamp
-            var asOfUtc = !string.IsNullOrEmpty(response.Timestamp)
-                ? DateTime.Parse(response.Timestamp, null, System.Globalization.DateTimeStyles.AssumeUniversal)
+            // Parse timestamp from updatedAt field
+            var asOfUtc = !string.IsNullOrEmpty(response.UpdatedAt)
+                ? DateTime.Parse(response.UpdatedAt, null, System.Globalization.DateTimeStyles.AssumeUniversal)
                 : DateTime.UtcNow;
 
             return new QuoteDto

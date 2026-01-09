@@ -11,6 +11,18 @@ import { useSettings } from '../settings/SettingsProvider';
 export function useMarketQuotes(tickers: string[] | undefined, enabled = true) {
   const { settings } = useSettings();
 
+  const isQueryEnabled = enabled && !!tickers && tickers.length > 0;
+
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[useMarketQuotes] Hook called', {
+      tickers,
+      enabled,
+      isQueryEnabled,
+      currency: settings.currency,
+    });
+  }
+
   return useQuery({
     queryKey: ['market-quotes', tickers, settings.currency],
     queryFn: async () => {
@@ -22,7 +34,7 @@ export function useMarketQuotes(tickers: string[] | undefined, enabled = true) {
         `/market/quotes?tickers=${encodeURIComponent(tickerList)}&currency=${encodeURIComponent(settings.currency)}`
       );
     },
-    enabled: enabled && !!tickers && tickers.length > 0,
+    enabled: isQueryEnabled,
     staleTime: 1000 * 60 * 15, // 15 minutes, matching backend cache
   });
 }
@@ -35,6 +47,18 @@ export function useMarketQuotes(tickers: string[] | undefined, enabled = true) {
 export function useMarketQuote(ticker: string | undefined, enabled = true) {
   const { settings } = useSettings();
 
+  const isQueryEnabled = enabled && !!ticker;
+
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[useMarketQuote] Hook called', {
+      ticker,
+      enabled,
+      isQueryEnabled,
+      currency: settings.currency,
+    });
+  }
+
   return useQuery({
     queryKey: ['market-quote', ticker, settings.currency],
     queryFn: async () => {
@@ -45,7 +69,7 @@ export function useMarketQuote(ticker: string | undefined, enabled = true) {
         `/market/quotes/${encodeURIComponent(ticker)}?currency=${encodeURIComponent(settings.currency)}`
       );
     },
-    enabled: enabled && !!ticker,
+    enabled: isQueryEnabled,
     staleTime: 1000 * 60 * 15, // 15 minutes
   });
 }
@@ -76,11 +100,5 @@ export function usePortfolioRoi(enabled = true) {
     enabled,
     staleTime: 1000 * 60 * 15, // 15 minutes
     retry: 1,
-    onError: (error) => {
-      console.error('[usePortfolioRoi] Query error:', error);
-    },
-    onSuccess: (data) => {
-      console.log('[usePortfolioRoi] Query success:', data);
-    },
   });
 }

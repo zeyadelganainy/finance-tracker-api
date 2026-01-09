@@ -2,10 +2,19 @@ import { supabase } from './supabaseClient';
 import { env } from './env';
 
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  // Dev-only: trace entry point
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.log('[apiFetch] ENTRY', { path, method: options.method || 'GET' });
+  }
+
   const { data: sessionData } = await supabase.auth.getSession();
   const token = sessionData.session?.access_token;
 
   if (!token) {
+    if (import.meta.env.DEV) {
+      console.error('[apiFetch] BLOCKED: No auth token for', path);
+    }
     throw new Error('No authentication token available');
   }
 

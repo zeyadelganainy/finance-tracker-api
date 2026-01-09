@@ -12,6 +12,7 @@ import { CardSkeleton } from '../components/ui/Skeleton';
 import { useAIContext } from '../hooks/useAI';
 import { useAuth } from '../auth/AuthProvider';
 import { EmptyState } from '../components/ui/EmptyState';
+import { env } from '../lib/env';
 
 const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
 
@@ -52,6 +53,10 @@ export function DashboardPage() {
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Dev-only: smoke test state
+  const [smokeTestResult, setSmokeTestResult] = useState<string | null>(null);
+  const [smokeTestLoading, setSmokeTestLoading] = useState(false);
   
   // Generate last 6 months for net worth chart
   const sixMonthsAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
@@ -232,6 +237,30 @@ export function DashboardPage() {
 
   const hasData = netWorthPoints.length > 0 || hasSummaryData;
 
+  // Dev-only: Force a network request to test API connectivity
+  const runSmokeTest = async () => {
+    setSmokeTestLoading(true);
+    setSmokeTestResult(null);
+    
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[Dashboard] Smoke test: Calling /market/quotes?tickers=XAU&currency=CAD');
+      
+      const response = await apiFetch<any>('/market/quotes?tickers=XAU&currency=CAD');
+      
+      // eslint-disable-next-line no-console
+      console.log('[Dashboard] Smoke test SUCCESS:', response);
+      
+      setSmokeTestResult(JSON.stringify(response, null, 2));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      console.error('[Dashboard] Smoke test FAILED:', message, err);
+      setSmokeTestResult(`ERROR: ${message}`);
+    } finally {
+      setSmokeTestLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -249,6 +278,48 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Dev-only: API Smoke Test */}
+        {import.meta.env.DEV && (
+          <Card className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
+            <div className="p-4">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
+                    🔧 Dev-Only: API Connectivity Test
+                  </h3>
+                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                    Test endpoint: GET /market/quotes?tickers=XAU&currency=CAD
+                  </p>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                    Base URL: {env.apiBaseUrl}
+                  </p>
+                </div>
+                <Button
+                  onClick={runSmokeTest}
+                  disabled={smokeTestLoading}
+                  variant="outline"
+                  size="sm"
+                >
+                  {smokeTestLoading ? 'Testing...' : 'Run Test'}
+                </Button>
+              </div>
+              
+              {smokeTestResult && (
+                <div className="mt-3">
+                  <div className="text-xs font-mono bg-white dark:bg-gray-900 p-3 rounded border border-yellow-300 dark:border-yellow-700 overflow-auto max-h-64">
+                    <pre className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
+                      {smokeTestResult}
+                    </pre>
+                  </div>
+                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
+                    ✓ Check browser Network tab for the request
+                  </p>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
         
         {loading ? (
           <>
