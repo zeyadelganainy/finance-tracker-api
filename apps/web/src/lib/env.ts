@@ -3,8 +3,14 @@
  * All environment variables are validated and exported from this module
  */
 
+// Determine environment
+const isDev = import.meta.env.DEV;
+
 // Required environment variables
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+// In development, default to Vite proxy '/api'; in production, default to deployed App Runner URL
+const apiBaseUrl = (import.meta.env.VITE_API_BASE_URL ?? (isDev
+  ? '/api'
+  : 'https://ugwm6qnmpp.us-east-2.awsapprunner.com')) as string;
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
@@ -15,8 +21,7 @@ const demoPassword = import.meta.env.VITE_DEMO_PASSWORD;
 // Validate required environment variables
 if (!apiBaseUrl) {
   throw new Error(
-    'Missing required environment variable: VITE_API_BASE_URL. ' +
-    'Please set it in your .env file or as an environment variable in Vercel.'
+    'API base URL is not set. In dev it should be \'/api\' (via Vite proxy), and in production it should be your deployed API URL.'
   );
 }
 

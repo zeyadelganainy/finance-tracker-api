@@ -218,11 +218,15 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
       return;
     }
     
-    // Metal-specific validation
-    if (assetClass === 'metal' && !formData.unit.trim()) {
-      showToast(t('assets.createModal.noteMetal'), 'error');
-      return;
-    }
+      // Metal (gold) validation: require unit and ticker (default XAU if empty)
+      if (assetClass === 'metal') {
+        const unitMissing = !formData.unit.trim();
+        const tickerMissing = !formData.ticker.trim();
+        if (unitMissing || tickerMissing) {
+          showToast(t('assets.createModal.noteMetal'), 'error');
+          return;
+        }
+      }
     
     const submitData: CreateAssetRequest = {
       name: formData.name.trim(),
@@ -261,34 +265,32 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
             <select
               value={formData.assetClass}
               onChange={(e) => {
+                const nextClass = e.target.value;
                 setFormData({
                   ...formData,
-                  assetClass: e.target.value,
-                  unit: e.target.value === 'stock' ? 'shares' : '',
-                  ticker: '',
+                  assetClass: nextClass,
+                  unit: nextClass === 'stock' ? 'shares' : 'oz',
+                  ticker: nextClass === 'stock' ? '' : 'XAU',
                 });
               }}
               required
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-transparent transition-all bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
             >
               <option value="stock">Stock</option>
-              <option value="crypto">Crypto</option>
-              <option value="metal">Metal</option>
-              <option value="cashequivalent">Cash Equivalent</option>
-              <option value="realestate">Real Estate</option>
+              <option value="metal">Gold</option>
             </select>
           </div>
         </div>
         
         {/* Asset Class Specific Fields */}
-        {(assetClass === 'stock' || assetClass === 'crypto') && (
+        {assetClass === 'stock' && (
             <Input
               type="text"
-              label={assetClass === 'stock' ? t('assets.createModal.tickerRequired') : t('assets.createModal.tickerOptional')}
+              label={t('assets.createModal.tickerRequired')}
             value={formData.ticker}
             onChange={(e) => setFormData({ ...formData, ticker: e.target.value.toUpperCase() })}
-            required={assetClass === 'stock'}
-            placeholder={assetClass === 'stock' ? 'e.g., AAPL' : 'e.g., BTC'}
+            required
+            placeholder="e.g., AAPL"
           />
         )}
         
@@ -320,7 +322,7 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
                 value={formData.unit}
                 onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
                 required={assetClass === 'metal'}
-                placeholder={assetClass === 'metal' ? 'e.g., oz, g, kg' : 'e.g., btc, units'}
+                placeholder="e.g., oz"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             )}
@@ -368,8 +370,6 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
           <p className="text-sm text-gray-700 dark:text-gray-200">
             <strong>Note:</strong> {assetClass === 'stock' && t('assets.createModal.noteStock')}
             {assetClass === 'metal' && t('assets.createModal.noteMetal')}
-            {assetClass === 'crypto' && t('assets.createModal.noteCrypto')}
-            {!['stock', 'metal', 'crypto'].includes(assetClass) && t('assets.createModal.noteDefault')}
           </p>
         </div>
         

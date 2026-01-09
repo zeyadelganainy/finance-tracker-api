@@ -93,10 +93,34 @@ builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
 builder.Services.Configure<MarketDataOptions>(builder.Configuration.GetSection(MarketDataOptions.SectionName));
 
 // Register HTTP clients for external APIs
-builder.Services.AddHttpClient<IFinnhubClient, FinnhubClient>()
-.ConfigureHttpClient(client =>
+// Finnhub requires an API key; use a named HttpClient and a factory to pass the key
+builder.Services.AddHttpClient("Finnhub")
+    .ConfigureHttpClient(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+
+builder.Services.AddScoped<IFinnhubClient>(sp =>
 {
-    client.Timeout = TimeSpan.FromSeconds(30);
+    var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+    var httpClient = httpClientFactory.CreateClient("Finnhub");
+    var options = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<MarketDataOptions>>().Value;
+    // Fallback to environment variable if not provided via options
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    // Handle placeholder values like "${FINNHUB_API_KEY}" from appsettings
+    var optKey = options.FinnhubApiKey;
+    var isPlaceholder = !string.IsNullOrWhiteSpace(optKey) && optKey.Trim().StartsWith("${") && optKey.Trim().EndsWith("}");
+
+    var apiKey = (!string.IsNullOrWhiteSpace(optKey) && !isPlaceholder)
+        ? optKey
+        : configuration["FINNHUB_API_KEY"];
+
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        throw new InvalidOperationException("Finnhub API key is missing. Set MarketData:FinnhubApiKey or FINNHUB_API_KEY.");
+    }
+
+    return new FinnhubClient(httpClient, apiKey);
 });
 
 // Create factory for Gold API (no auth required)
