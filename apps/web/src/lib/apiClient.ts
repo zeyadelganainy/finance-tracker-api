@@ -25,13 +25,26 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
 
   const fullUrl = `${env.apiBaseUrl}${path}`;
 
-  // Dev-only: log key requests for debugging
-  if (import.meta.env.DEV && (path.startsWith('/portfolio') || path.startsWith('/market') || path.startsWith('/assets'))) {
+  // Dev-only: log all API requests with details
+  if (import.meta.env.DEV) {
     // eslint-disable-next-line no-console
-    console.debug(`[apiFetch] ${fetchOptions.method || 'GET'} ${fullUrl}`);
+    console.log(`[apiFetch] → ${fetchOptions.method || 'GET'} ${fullUrl}`, {
+      headers: Object.fromEntries(headers.entries()),
+      hasToken: !!token,
+    });
   }
 
-  const response = await fetch(fullUrl, fetchOptions);
+  let response: Response;
+  try {
+    response = await fetch(fullUrl, fetchOptions);
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.log(`[apiFetch] ← ${response.status} ${fetchOptions.method || 'GET'} ${fullUrl}`);
+    }
+  } catch (fetchError) {
+    console.error('[apiFetch] Network error:', fetchError);
+    throw new Error(`Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`);
+  }
 
   if (response.status === 401) {
     await supabase.auth.signOut();
@@ -44,7 +57,9 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   if (!response.ok) {
     const bodyText = await response.text();
     const message = bodyText || response.statusText || 'Request failed';
-    throw new Error(`${response.status}: ${message}`);
+    const errorMsg = `${response.status}: ${message}`;
+    console.error('[apiFetch] Request failed:', errorMsg, { path, status: response.status });
+    throw new Error(errorMsg);
   }
 
   if (response.status === 204) {

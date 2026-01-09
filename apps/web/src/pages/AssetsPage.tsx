@@ -20,13 +20,24 @@ export function AssetsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   
   // Fetch assets
-  const { data: assets = [], isLoading } = useQuery({
+  const { data: assets = [], isLoading, error: assetsError } = useQuery({
     queryKey: ['assets'],
     queryFn: () => apiFetch<Asset[]>('/assets'),
   });
   
   // Fetch portfolio ROI (current value + ROI, auto-includes currency)
-  const { data: portfolioRoi, isLoading: isRoiLoading } = usePortfolioRoi();
+  const { data: portfolioRoi, isLoading: isRoiLoading, error: roiError } = usePortfolioRoi();
+  
+  // Debug logging
+  console.log('[AssetsPage] Render state:', {
+    assetsCount: assets?.length,
+    isLoading,
+    isRoiLoading,
+    hasRoiData: !!portfolioRoi,
+    roiItemsCount: portfolioRoi?.items?.length,
+    assetsError: assetsError?.message,
+    roiError: roiError?.message,
+  });
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -41,6 +52,13 @@ export function AssetsPage() {
                   ? t('assets.count', { count: (assets || []).length })
                   : t('assets.countPlural', { count: (assets || []).length })}
               </p>
+              {/* Debug info in dev */}
+              {import.meta.env.DEV && (roiError || assetsError) && (
+                <div className="mt-2 p-2 bg-red-100 dark:bg-red-900 rounded text-xs">
+                  {assetsError && <div>Assets error: {assetsError.message}</div>}
+                  {roiError && <div>ROI error: {roiError.message}</div>}
+                </div>
+              )}
             </div>
             <Button onClick={() => setShowCreateModal(true)}>
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

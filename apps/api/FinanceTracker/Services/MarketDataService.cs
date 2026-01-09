@@ -157,7 +157,30 @@ public class MarketDataService : IMarketDataService
 
     private async Task<QuoteDto> GetGoldQuoteAsync(string currency, CancellationToken ct)
     {
-        var cacheKey = $"gold:cur:{currency}";
+        // Default to oz (troy ounce) for backward compatibility
+        return await GetGoldQuoteAsync(currency, "oz", ct);
+    }
+
+    /// <summary>
+    /// Get gold quote with currency and weight unit conversion
+    /// </summary>
+    /// <param name="currency">Target currency (USD, CAD, EUR, GBP)</param>
+    /// <param name="weightUnit">Target weight unit (oz, g, kg)</param>
+    /// <param name="ct">Cancellation token</param>
+    private async Task<QuoteDto> GetGoldQuoteAsync(string currency, string weightUnit, CancellationToken ct)
+    {
+        // Normalize inputs
+        currency = string.IsNullOrWhiteSpace(currency) ? "CAD" : currency.ToUpperInvariant();
+        weightUnit = string.IsNullOrWhiteSpace(weightUnit) ? "oz" : weightUnit.ToLowerInvariant();
+
+        // Validate weight unit
+        if (weightUnit != "oz" && weightUnit != "g" && weightUnit != "kg")
+        {
+            _logger.LogWarning("Invalid weight unit {Unit}, defaulting to oz", weightUnit);
+            weightUnit = "oz";
+        }
+
+        var cacheKey = $"gold:cur:{currency}:unit:{weightUnit}";
 
         // Try cache first
         if (_cache.TryGetValue(cacheKey, out var cached))
@@ -168,7 +191,7 @@ public class MarketDataService : IMarketDataService
         try
         {
             // Try live fetch
-            var liveQuote = await FetchGoldQuoteAsync(currency, ct);
+            var liveQuote = await FetchGoldQuoteAsync(currency, weightUnit, ct);
             if (liveQuote != null && liveQuote.Price.HasValue)
             {
                 liveQuote.IsStale = false;
@@ -185,28 +208,59 @@ public class MarketDataService : IMarketDataService
         }
     }
 
-    private async Task<QuoteDto?> FetchGoldQuoteAsync(string currency, CancellationToken ct)
+    private async Task<QuoteDto?> FetchGoldQuoteAsync(string currency, string weightUnit, CancellationToken ct)
     {
         try
         {
-            // Get USD price from Gold-API
+            // Step 1: Get USD price per troy ounce from Gold-API
             var response = await _goldApi.GetGoldPriceAsync(ct);
             if (response?.Price == null)
+            {
+                _logger.LogWarning("Gold-API returned null or no price");
                 return null;
+            }
 
-            var priceInTargetCurrency = response.Price.Value;
+            var usdPerOz = response.Price.Value;
 
-            // If target currency is not USD, convert via FX rate
-            if (!currency.Equals("USD", StringComparison.OrdinalIgnoreCase))
+            // Step 2: Convert currency (USD -> target)
+            decimal convertedPricePerOz;
+            if (currency.Equals("USD", StringComparison.OrdinalIgnoreCase))
+            {
+                convertedPricePerOz = usdPerOz;
+            }
+            else
             {
                 var fxRate = await GetFxRateAsync("USD", currency, ct);
                 if (fxRate == null || fxRate == 0)
+                {
+                    _logger.LogWarning("Failed to get FX rate from USD to {Currency}", currency);
                     return null;
-
-                priceInTargetCurrency = response.Price.Value * fxRate.Value;
+                }
+                convertedPricePerOz = usdPerOz * fxRate.Value;
             }
 
-            // Parse timestamp, defaulting to now if not available
+            // Step 3: Convert weight unit (oz -> target)
+            // Constants: 1 troy ounce = 31.1034768 grams, 1 kg = 1000 grams
+            const decimal GRAMS_PER_TROY_OUNCE = 31.1034768m;
+            
+            decimal finalPrice;
+            switch (weightUnit)
+            {
+                case "oz":
+                    finalPrice = convertedPricePerOz;
+                    break;
+                case "g":
+                    finalPrice = convertedPricePerOz / GRAMS_PER_TROY_OUNCE;
+                    break;
+                case "kg":
+                    finalPrice = (convertedPricePerOz / GRAMS_PER_TROY_OUNCE) * 1000m;
+                    break;
+                default:
+                    finalPrice = convertedPricePerOz; // Should never hit due to validation above
+                    break;
+            }
+
+            // Parse timestamp
             var asOfUtc = !string.IsNullOrEmpty(response.Timestamp)
                 ? DateTime.Parse(response.Timestamp, null, System.Globalization.DateTimeStyles.AssumeUniversal)
                 : DateTime.UtcNow;
@@ -214,7 +268,7 @@ public class MarketDataService : IMarketDataService
             return new QuoteDto
             {
                 Ticker = "XAU",
-                Price = priceInTargetCurrency,
+                Price = finalPrice,
                 Currency = currency,
                 AsOfUtc = asOfUtc,
                 Source = "gold-api",
@@ -223,7 +277,7 @@ public class MarketDataService : IMarketDataService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching gold quote for {Currency}", currency);
+            _logger.LogError(ex, "Error fetching gold quote for {Currency} {Unit}", currency, weightUnit);
             return null;
         }
     }

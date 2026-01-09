@@ -117,7 +117,10 @@ builder.Services.AddScoped<IFinnhubClient>(sp =>
 
     if (string.IsNullOrWhiteSpace(apiKey))
     {
-        throw new InvalidOperationException("Finnhub API key is missing. Set MarketData:FinnhubApiKey or FINNHUB_API_KEY.");
+        var logger = sp.GetRequiredService<ILogger<Program>>();
+        logger.LogWarning("FINNHUB_API_KEY is not configured. Stock quotes will fail. Set MarketData:FinnhubApiKey or FINNHUB_API_KEY environment variable.");
+        // Use a placeholder to avoid DI failure, but quotes will return null
+        apiKey = "MISSING_API_KEY";
     }
 
     return new FinnhubClient(httpClient, apiKey);

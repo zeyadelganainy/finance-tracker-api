@@ -57,14 +57,30 @@ export function useMarketQuote(ticker: string | undefined, enabled = true) {
 export function usePortfolioRoi(enabled = true) {
   const { settings } = useSettings();
 
+  console.log('[usePortfolioRoi] Hook called', {
+    enabled,
+    currency: settings.currency,
+    queryKey: ['portfolio-roi', settings.currency],
+  });
+
   return useQuery({
     queryKey: ['portfolio-roi', settings.currency],
     queryFn: async () => {
-      return apiFetch<PortfolioRoiResponse>(
+      console.log('[usePortfolioRoi] Executing query for currency:', settings.currency);
+      const result = await apiFetch<PortfolioRoiResponse>(
         `/portfolio/roi?currency=${encodeURIComponent(settings.currency)}`
       );
+      console.log('[usePortfolioRoi] Query result:', result);
+      return result;
     },
     enabled,
     staleTime: 1000 * 60 * 15, // 15 minutes
+    retry: 1,
+    onError: (error) => {
+      console.error('[usePortfolioRoi] Query error:', error);
+    },
+    onSuccess: (data) => {
+      console.log('[usePortfolioRoi] Query success:', data);
+    },
   });
 }
