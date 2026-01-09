@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../lib/apiClient';
-import { Asset, CreateAssetRequest } from '../types/api';
+import { Asset, CreateAssetRequest, PortfolioRoiItemDto } from '../types/api';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
@@ -11,7 +11,8 @@ import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
-import { useAssetValuation } from '../hooks/useAI';
+import { formatCurrency, formatPercent, formatDateTime } from '../lib/utils';
+import { usePortfolioRoi } from '../hooks/useMarketQuotes';
 
 export function AssetsPage() {
   const { t } = useTranslation();
@@ -24,8 +25,8 @@ export function AssetsPage() {
     queryFn: () => apiFetch<Asset[]>('/assets'),
   });
   
-  // Fetch valuations (AI-ready, currently stub)
-  const { data: valuationData } = useAssetValuation();
+  // Fetch portfolio ROI (current value + ROI, auto-includes currency)
+  const { data: portfolioRoi, isLoading: isRoiLoading } = usePortfolioRoi();
   
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -60,8 +61,8 @@ export function AssetsPage() {
         ) : (assets || []).length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(assets || []).map((asset) => {
-              // Find valuation data for this asset
-              const valuation = valuationData?.assets.find(v => v.assetId === asset.id);
+              // Match ROI/quote data to asset
+              const valuation = portfolioRoi?.items.find((v) => v.assetId === asset.id);
               
               return (
                 <Card key={asset.id} className="hover:shadow-lg transition-all">
@@ -111,7 +112,7 @@ export function AssetsPage() {
                     )}
                     
                     {/* Valuation Section (AI-Ready) */}
-                    <ValuationSection valuation={valuation} />
+                    <ValuationSection valuation={valuation} isLoading={isRoiLoading} />
                   </div>
                 </Card>
               );
@@ -391,67 +392,77 @@ function CreateAssetModal({ onClose, onSuccess }: CreateAssetModalProps) {
   );
 }
 
-// Valuation Section Component (AI-Ready)
+// Valuation Section Component (live market data)
 interface ValuationSectionProps {
-  valuation: any; // AssetValuationData
+  valuation?: PortfolioRoiItemDto;
+  isLoading: boolean;
 }
 
-function ValuationSection({ valuation }: ValuationSectionProps) {
+function ValuationSection({ valuation, isLoading }: ValuationSectionProps) {
   const { t } = useTranslation();
-  const [showTooltip, setShowTooltip] = useState(false);
-  
+
+  if (isLoading) {
+    return (
+      <div className="pt-3 border-t border-gray-100 dark:border-gray-800 animate-pulse space-y-2">
+        <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded" />
+        <div className="h-4 bg-gray-200 dark:bg-gray-800 rounded" />
+      </div>
+    );
+  }
+
+  const currentValue = valuation?.currentValue;
+  const roiPercent = valuation?.roiPercent;
+  const asOf = valuation?.quoteAsOfUtc;
+
+  const roiColor = roiPercent === null || roiPercent === undefined
+    ? 'text-gray-900 dark:text-gray-100'
+    : roiPercent >= 0
+      ? 'text-green-600'
+      : 'text-red-600';
+
   return (
-    <div className="pt-3 border-t border-gray-100">
+    <div className="pt-3 border-t border-gray-100 dark:border-gray-800">
       <div className="space-y-2">
         {/* Current Value */}
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-600 dark:text-gray-400">{t('assets.currentValue')}</span>
           <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {valuation?.currentValue ? `$${valuation.currentValue.toFixed(2)}` : '—'}
+            {currentValue !== null && currentValue !== undefined ? formatCurrency(currentValue) : '—'}
           </span>
         </div>
-        
+
         {/* ROI */}
         <div className="flex items-center justify-between">
           <span className="text-xs text-gray-600 dark:text-gray-400">{t('assets.roi')}</span>
-          <span className={`text-sm font-semibold ${
-            valuation?.roiPercentage
-              ? valuation.roiPercentage >= 0
-                ? 'text-green-600'
-                : 'text-red-600'
-              : 'text-gray-900'
-          }`}>
-            {valuation?.roiPercentage ? `${valuation.roiPercentage.toFixed(2)}%` : '—'}
+          <span className={`text-sm font-semibold ${roiColor}`}>
+            {formatPercent(roiPercent)}
           </span>
         </div>
-        
-        {/* Status Badge */}
-        <div className="pt-2">
-          <div className="flex items-center gap-2">
-            <Badge 
-              variant="warning"
-              className="text-xs"
-            >
-              {t('assets.valuationComing')}
+
+        {/* Status badges */}
+        <div className="flex items-center gap-2 pt-1 flex-wrap">
+          {valuation?.isQuoteStale && (
+            <span title={t('common.cachedTooltip')}>
+              <Badge variant="warning" className="text-xs">
+                {t('common.cached')}
+              </Badge>
+            </span>
+          )}
+          {valuation?.error && (
+            <Badge variant="danger" className="text-xs">
+              {t('common.error')}
             </Badge>
-            <button
-              type="button"
-              onClick={() => setShowTooltip(!showTooltip)}
-              className="text-gray-400 hover:text-gray-600 transition"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-            </button>
-          </div>
-          
-          {/* Tooltip */}
-          {showTooltip && (
-            <div className="mt-2 p-2 text-xs text-gray-700 dark:text-gray-200 bg-gray-50 dark:bg-gray-900 rounded border border-gray-200 dark:border-gray-800">
-              {t('assets.valuationTooltip')}
-            </div>
+          )}
+          {asOf && (
+            <span className="text-[11px] text-gray-500 dark:text-gray-400">
+              {formatDateTime(asOf)}
+            </span>
           )}
         </div>
+
+        {valuation?.error && (
+          <p className="text-xs text-red-600 dark:text-red-400 mt-1">{valuation.error}</p>
+        )}
       </div>
     </div>
   );

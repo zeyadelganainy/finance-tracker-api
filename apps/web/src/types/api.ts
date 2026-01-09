@@ -239,4 +239,47 @@ export interface ErrorResponse {
   traceId: string;
 }
 
+// Market Quotes
+export interface QuoteDto {
+  ticker: string;
+  price: number | null;
+  currency: string;
+  asOfUtc: string | null;
+  source: string | null;
+  isStale: boolean;
+  error: string | null;
+}
 
+// Portfolio ROI
+export interface PortfolioRoiItemDto {
+  assetId: string;
+  name: string;
+  assetClass: string;
+  ticker?: string | null;
+  quantity: number;
+  unit?: string | null;
+  costBasisTotal: number;
+  costBasisPerUnit: number;
+  unitPrice: number | null;
+  currentValue: number | null;
+  unrealizedGain: number | null;
+  roiPercent: number | null;
+  currency: string;
+  quoteAsOfUtc: string | null;
+  isQuoteStale: boolean;
+  error: string | null;
+}
+
+export interface PortfolioTotalsDto {
+  costBasisTotal: number;
+  currentValueTotal: number;
+  unrealizedGainTotal: number;
+  roiPercentTotal: number | null;
+  itemsWithValidQuotes: number;
+  itemsWithErrors: number;
+}
+
+export interface PortfolioRoiResponse {
+  items: PortfolioRoiItemDto[];
+  totals: PortfolioTotalsDto;
+}

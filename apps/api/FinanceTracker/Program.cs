@@ -1,7 +1,9 @@
 using FinanceTracker.Auth;
 using FinanceTracker.Contracts.Common;
 using FinanceTracker.Data;
+using FinanceTracker.ExternalApis;
 using FinanceTracker.Middleware;
+using FinanceTracker.Options;
 using FinanceTracker.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
@@ -86,6 +88,37 @@ builder.Services.AddAuthorization();
 builder.Services.Configure<AuthConfiguration>(builder.Configuration.GetSection(AuthConfiguration.SectionName));
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, CurrentUserContext>();
+
+// Register market data and portfolio services
+builder.Services.Configure<MarketDataOptions>(builder.Configuration.GetSection(MarketDataOptions.SectionName));
+
+// Register HTTP clients for external APIs
+builder.Services.AddHttpClient<IFinnhubClient, FinnhubClient>()
+.ConfigureHttpClient(client =>
+{
+    client.Timeout = TimeSpan.FromSeconds(30);
+});
+
+// Create factory for Gold API (no auth required)
+builder.Services.AddHttpClient<IGoldApiClient, GoldApiClient>()
+    .ConfigureHttpClient(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(30);
+    });
+
+// Create factory for Exchangerate.host (free FX, no auth required)
+builder.Services.AddHttpClient<IFxRateClient, ExchangerateHostClient>()
+    .ConfigureHttpClient(client =>
+    {
+        client.Timeout = TimeSpan.FromSeconds(10);
+    });
+
+// Register market data and portfolio services
+builder.Services.AddScoped<IMarketDataService, MarketDataService>();
+builder.Services.AddScoped<IPortfolioRoiService, PortfolioRoiService>();
+
+// Add memory cache for quotes and FX rates
+builder.Services.AddMemoryCache();
 
 // Register OFX parser service
 builder.Services.AddScoped<IOFXParserService, OFXParserService>();

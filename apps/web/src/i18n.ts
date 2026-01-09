@@ -17,6 +17,9 @@ const resources = {
         loading: 'Loading',
         required: 'This field is required',
         comingSoon: 'Coming soon',
+        cached: 'Cached',
+        cachedTooltip: 'This value is from cache (provider is temporarily unavailable)',
+        error: 'Error',
       },
       nav: {
         dashboard: 'Dashboard',
@@ -299,6 +302,9 @@ const resources = {
         loading: 'Chargement',
         required: 'Ce champ est requis',
         comingSoon: 'Bientôt disponible',
+        cached: 'En cache',
+        cachedTooltip: 'Cette valeur est en cache (le fournisseur est temporairement indisponible)',
+        error: 'Erreur',
       },
       nav: {
         dashboard: 'Tableau de bord',
