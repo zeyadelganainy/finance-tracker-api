@@ -242,9 +242,11 @@ public class GoldQuoteTests
     {
         // Arrange: Sample JSON from Gold-API
         var json = @"{
+            ""name"": ""Gold"",
             ""price"": 2063.45,
-            ""currency"": ""USD"",
-            ""timestamp"": ""2026-01-09T12:00:00Z""
+            ""symbol"": ""XAU"",
+            ""updatedAt"": ""2026-01-09T12:00:00Z"",
+            ""updatedAtReadable"": ""a few seconds ago""
         }";
 
         // Act
@@ -253,8 +255,7 @@ public class GoldQuoteTests
         // Assert
         Assert.NotNull(response);
         Assert.Equal(2063.45m, response.Price);
-        Assert.Equal("USD", response.Currency);
-        Assert.Equal("2026-01-09T12:00:00Z", response.Timestamp);
+        Assert.Equal("2026-01-09T12:00:00Z", response.UpdatedAt);
     }
 
     [Theory]

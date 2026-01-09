@@ -59,10 +59,30 @@ public class PortfolioRoiService : IPortfolioRoiService
         var quotes = new Dictionary<string, QuoteDto>(StringComparer.OrdinalIgnoreCase);
         if (tickersToFetch.Any())
         {
-            var quoteList = await _marketData.GetQuotesAsync(tickersToFetch, currency, ct);
-            foreach (var quote in quoteList)
+            // For now, fetch individually to handle per-asset weight units for gold
+            // In the future, could batch non-gold tickers separately
+            foreach (var asset in assets)
             {
-                quotes[quote.Ticker] = quote;
+                var isMetal = string.Equals(asset.AssetClass, "metal", StringComparison.OrdinalIgnoreCase);
+                var tickerToUse = !string.IsNullOrWhiteSpace(asset.Ticker) ? asset.Ticker! : (isMetal ? "XAU" : null);
+                
+                if (string.IsNullOrWhiteSpace(tickerToUse))
+                    continue;
+
+                // Skip if already fetched (same ticker+unit combo)
+                var cacheKey = isMetal && tickerToUse.Equals("XAU", StringComparison.OrdinalIgnoreCase)
+                    ? $"{tickerToUse}:{asset.Unit ?? "oz"}"
+                    : tickerToUse;
+                
+                if (quotes.ContainsKey(cacheKey))
+                    continue;
+
+                // Fetch quote with weight unit for gold
+                var quote = isMetal && tickerToUse.Equals("XAU", StringComparison.OrdinalIgnoreCase)
+                    ? await _marketData.GetQuoteAsync(tickerToUse, currency, asset.Unit, ct)
+                    : await _marketData.GetQuoteAsync(tickerToUse, currency, ct);
+                
+                quotes[cacheKey] = quote;
             }
         }
 
@@ -71,6 +91,11 @@ public class PortfolioRoiService : IPortfolioRoiService
         {
             var isMetal = string.Equals(asset.AssetClass, "metal", StringComparison.OrdinalIgnoreCase);
             var tickerToUse = !string.IsNullOrWhiteSpace(asset.Ticker) ? asset.Ticker! : (isMetal ? "XAU" : null);
+
+            // For gold, use ticker+unit as lookup key
+            var quoteKey = isMetal && tickerToUse?.Equals("XAU", StringComparison.OrdinalIgnoreCase) == true
+                ? $"{tickerToUse}:{asset.Unit ?? "oz"}"
+                : tickerToUse;
 
             var item = new PortfolioRoiItemDto
             {
@@ -105,8 +130,8 @@ public class PortfolioRoiService : IPortfolioRoiService
                 continue;
             }
 
-            // Get quote
-            if (!quotes.TryGetValue(tickerToUse, out var quote))
+            // Get quote  
+            if (string.IsNullOrWhiteSpace(quoteKey) || !quotes.TryGetValue(quoteKey, out var quote))
             {
                 item.Error = "Failed to fetch quote for this ticker.";
                 item.IsQuoteStale = true;

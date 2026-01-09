@@ -20,6 +20,11 @@ public interface IMarketDataService
     /// Get a single quote for a ticker in a specified currency
     /// </summary>
     Task<QuoteDto> GetQuoteAsync(string ticker, string currency, CancellationToken ct = default);
+
+    /// <summary>
+    /// Get a single quote for a ticker with optional weight unit (for gold/metals)
+    /// </summary>
+    Task<QuoteDto> GetQuoteAsync(string ticker, string currency, string? weightUnit, CancellationToken ct = default);
 }
 
 public class MarketDataService : IMarketDataService
@@ -71,15 +76,23 @@ public class MarketDataService : IMarketDataService
 
     public async Task<QuoteDto> GetQuoteAsync(string ticker, string currency, CancellationToken ct = default)
     {
+        return await GetQuoteAsync(ticker, currency, null, ct);
+    }
+
+    public async Task<QuoteDto> GetQuoteAsync(string ticker, string currency, string? weightUnit, CancellationToken ct = default)
+    {
         if (string.IsNullOrWhiteSpace(ticker))
             return new QuoteDto { Ticker = ticker, Currency = currency, Error = "Ticker is empty" };
 
         ticker = ticker.ToUpperInvariant().Trim();
         currency = currency.ToUpperInvariant();
 
-        // Special handling for gold
+        // Special handling for gold with weight unit
         if (ticker == "XAU")
-            return await GetGoldQuoteAsync(currency, ct);
+        {
+            var unit = string.IsNullOrWhiteSpace(weightUnit) ? "oz" : weightUnit.ToLowerInvariant();
+            return await GetGoldQuoteAsync(currency, unit, ct);
+        }
 
         // Standard ticker quote
         var cacheKey = $"quote:ticker:{ticker}:cur:{currency}";
@@ -153,12 +166,6 @@ public class MarketDataService : IMarketDataService
             _logger.LogError(ex, "Error fetching quote for {Ticker}", ticker);
             return null;
         }
-    }
-
-    private async Task<QuoteDto> GetGoldQuoteAsync(string currency, CancellationToken ct)
-    {
-        // Default to oz (troy ounce) for backward compatibility
-        return await GetGoldQuoteAsync(currency, "oz", ct);
     }
 
     /// <summary>

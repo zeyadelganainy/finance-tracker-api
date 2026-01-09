@@ -58,8 +58,8 @@ public class PortfolioRoiServiceTests
             IsStale = false
         };
 
-        _marketDataMock.Setup(m => m.GetQuotesAsync(It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<QuoteDto> { quote });
+        _marketDataMock.Setup(m => m.GetQuoteAsync("AAPL", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(quote);
 
         // Act
         var result = await _service.CalculatePortfolioRoiAsync(userId, "USD");
@@ -111,14 +111,10 @@ public class PortfolioRoiServiceTests
         _db.Assets.AddRange(assetNormal, assetZeroCost);
         await _db.SaveChangesAsync();
 
-        var quotes = new List<QuoteDto>
-        {
-            new() { Ticker = "MSFT", Price = 100m, Currency = "USD" },
-            new() { Ticker = "GOOG", Price = 140m, Currency = "USD" }
-        };
-
-        _marketDataMock.Setup(m => m.GetQuotesAsync(It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(quotes);
+        _marketDataMock.Setup(m => m.GetQuoteAsync("MSFT", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuoteDto { Ticker = "MSFT", Price = 100m, Currency = "USD" });
+        _marketDataMock.Setup(m => m.GetQuoteAsync("GOOG", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuoteDto { Ticker = "GOOG", Price = 140m, Currency = "USD" });
 
         // Act
         var result = await _service.CalculatePortfolioRoiAsync(userId, "USD");
@@ -202,15 +198,10 @@ public class PortfolioRoiServiceTests
         _db.Assets.AddRange(asset1, asset2);
         await _db.SaveChangesAsync();
 
-        // Prices for CAD (AAPL = 150 CAD, MSFT = 100 CAD)
-        var quotes = new List<QuoteDto>
-        {
-            new() { Ticker = "AAPL", Price = 150m, Currency = "CAD", IsStale = false },
-            new() { Ticker = "MSFT", Price = 100m, Currency = "CAD", IsStale = false }
-        };
-
-        _marketDataMock.Setup(m => m.GetQuotesAsync(It.IsAny<List<string>>(), "CAD", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(quotes);
+        _marketDataMock.Setup(m => m.GetQuoteAsync("AAPL", "CAD", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuoteDto { Ticker = "AAPL", Price = 150m, Currency = "CAD", IsStale = false });
+        _marketDataMock.Setup(m => m.GetQuoteAsync("MSFT", "CAD", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuoteDto { Ticker = "MSFT", Price = 100m, Currency = "CAD", IsStale = false });
 
         // Act
         var result = await _service.CalculatePortfolioRoiAsync(userId, "CAD");
@@ -252,8 +243,8 @@ public class PortfolioRoiServiceTests
             IsStale = false
         };
 
-        _marketDataMock.Setup(m => m.GetQuotesAsync(It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<QuoteDto> { quote });
+        _marketDataMock.Setup(m => m.GetQuoteAsync("NVDA", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(quote);
 
         // Act
         var result = await _service.CalculatePortfolioRoiAsync(userId, "USD");
@@ -292,8 +283,8 @@ public class PortfolioRoiServiceTests
             Error = "Using cached quote"
         };
 
-        _marketDataMock.Setup(m => m.GetQuotesAsync(It.IsAny<List<string>>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new List<QuoteDto> { quote });
+        _marketDataMock.Setup(m => m.GetQuoteAsync("TSLA", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(quote);
 
         // Act
         var result = await _service.CalculatePortfolioRoiAsync(userId, "USD");

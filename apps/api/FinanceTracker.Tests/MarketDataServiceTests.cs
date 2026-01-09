@@ -112,8 +112,7 @@ public class MarketDataServiceTests
         var goldResponse = new GoldApiResponse
         {
             Price = 2000m,
-            Currency = "USD",
-            Timestamp = DateTime.UtcNow.ToString("O")
+            UpdatedAt = DateTime.UtcNow.ToString("O")
         };
 
         _goldApiMock.Setup(m => m.GetGoldPriceAsync(It.IsAny<CancellationToken>()))
