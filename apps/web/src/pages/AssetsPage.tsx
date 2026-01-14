@@ -201,7 +201,7 @@ export function AssetsPage() {
   const updateAssetMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: CreateAssetRequest }) =>
       apiFetch<Asset>(`/assets/${id}`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
@@ -643,6 +643,8 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
           value={values.name}
           onChange={(value) => handleChange('name', value)}
           error={errors.name}
+          placeholder="e.g., Apple Stock, Gold Bullion"
+          required
         />
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('assets.createModal.assetClass')} <span className="text-red-500">*</span></label>
@@ -661,30 +663,40 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
           label={t('assets.createModal.ticker')}
           value={values.ticker}
           onChange={(value) => handleChange('ticker', value)}
-          helper={t('assets.createModal.tickerOptional')}
+          helper="Required for stocks"
+          placeholder="e.g., AAPL, MSFT"
+          required
         />
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <AssetFormField
-            label={t('assets.quantity')}
+            label="Number of Shares/Units"
             value={values.quantity}
             onChange={(value) => handleChange('quantity', value)}
             type="number"
             error={errors.quantity}
+            placeholder="e.g., 100"
+            required
           />
           {values.assetClass === 'stock' ? (
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('assets.createModal.unit')}</label>
+              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                {t('assets.createModal.unit')}
+              </label>
               <div className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-gray-700 dark:text-gray-300">
-                Share
+                Shares
               </div>
             </div>
           ) : values.assetClass === 'metal' ? (
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('assets.createModal.unit')}</label>
+              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+                {t('assets.createModal.unit')}
+                <span className="text-red-500 ml-1">*</span>
+              </label>
               <Select
                 value={values.unit}
                 onChange={(e) => handleChange('unit', e.target.value)}
                 options={[
+                  { value: '', label: 'Select unit...' },
                   { value: 'oz', label: 'Troy Ounce (oz)' },
                   { value: 'g', label: 'Gram (g)' },
                   { value: 'kg', label: 'Kilogram (kg)' },
@@ -705,6 +717,9 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
           onChange={(value) => handleChange('costBasisTotal', value)}
           type="number"
           error={errors.costBasisTotal}
+          placeholder="e.g., 15000"
+          helper="Total cost for all units"
+          required
         />
         <AssetFormField
           label={t('assets.createModal.purchaseDate')}
@@ -717,6 +732,7 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
           value={values.notes}
           onChange={(value) => handleChange('notes', value)}
           multiline
+          placeholder="Additional information about this asset"
         />
       </div>
     </Modal>
@@ -731,21 +747,28 @@ interface AssetFormFieldProps {
   helper?: string;
   type?: string;
   multiline?: boolean;
+  placeholder?: string;
+  required?: boolean;
 }
 
-function AssetFormField({ label, value, onChange, error, helper, type = 'text', multiline }: AssetFormFieldProps) {
+function AssetFormField({ label, value, onChange, error, helper, type = 'text', multiline, placeholder, required }: AssetFormFieldProps) {
   const field = multiline ? (
     <textarea
       className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
     />
   ) : (
-    <Input value={value} type={type} onChange={(e) => onChange(e.target.value)} />
+    <Input value={value} type={type} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
   );
   return (
     <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{label}</label>
+      <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+        {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
+        {!required && <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>}
+      </label>
       {field}
       {helper && <p className="text-xs text-gray-500">{helper}</p>}
       {error && <p className="text-xs text-red-500">{error}</p>}
