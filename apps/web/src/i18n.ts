@@ -273,7 +273,6 @@ const resources = {
         title: 'App Settings',
         languageRegion: 'Language & Region',
         appearance: 'Appearance',
-        // duplicate keys removed
         language: 'Language',
         currency: 'Default currency',
         themeMode: 'Theme mode',
@@ -558,7 +557,7 @@ const resources = {
         title: 'Paramètres de l’application',
         languageRegion: 'Langue et région',
         appearance: 'Apparence',
-        // duplicate keys removed
+
         language: 'Langue',
         currency: 'Devise par défaut',
         themeMode: 'Mode du thème',
