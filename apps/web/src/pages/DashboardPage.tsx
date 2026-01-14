@@ -239,14 +239,16 @@ export function DashboardPage() {
 
   // Dev-only: Force a network request to test API connectivity
   const runSmokeTest = async () => {
+    const tickers = 'XAU,AAPL';
+    const endpoint = `/market/quotes?tickers=${encodeURIComponent(tickers)}&currency=CAD`;
     setSmokeTestLoading(true);
     setSmokeTestResult(null);
     
     try {
       // eslint-disable-next-line no-console
-      console.log('[Dashboard] Smoke test: Calling /market/quotes?tickers=XAU&currency=CAD');
+      console.log('[Dashboard] Smoke test: Calling', endpoint);
       
-      const response = await apiFetch<any>('/market/quotes?tickers=XAU&currency=CAD');
+      const response = await apiFetch<any>(endpoint);
       
       // eslint-disable-next-line no-console
       console.log('[Dashboard] Smoke test SUCCESS:', response);
@@ -289,7 +291,7 @@ export function DashboardPage() {
                     🔧 Dev-Only: API Connectivity Test
                   </h3>
                   <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                    Test endpoint: GET /market/quotes?tickers=XAU&currency=CAD
+                    Test endpoint: GET /market/quotes?tickers=XAU,AAPL&currency=CAD
                   </p>
                   <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
                     Base URL: {env.apiBaseUrl}
@@ -301,7 +303,7 @@ export function DashboardPage() {
                   variant="outline"
                   size="sm"
                 >
-                  {smokeTestLoading ? 'Testing...' : 'Run Test'}
+                  {smokeTestLoading ? 'Testing...' : 'Fetch XAU + AAPL'}
                 </Button>
               </div>
               

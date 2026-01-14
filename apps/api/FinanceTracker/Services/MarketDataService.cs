@@ -206,8 +206,11 @@ public class MarketDataService : IMarketDataService
                 return liveQuote;
             }
 
-            // Fallback to cache
-            return await FallbackToCache(cacheKey, "XAU", currency, "Live gold quote failed", ct);
+            // Fallback to cache with clearer error context
+            var errorPrefix = currency.Equals("USD", StringComparison.OrdinalIgnoreCase)
+                ? "Live gold quote failed"
+                : "Live gold quote failed (FX rate unavailable or gold API error)";
+            return await FallbackToCache(cacheKey, "XAU", currency, errorPrefix, ct);
         }
         finally
         {
