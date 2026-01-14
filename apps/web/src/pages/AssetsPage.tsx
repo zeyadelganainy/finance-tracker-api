@@ -7,6 +7,7 @@ import { Asset, CreateAssetRequest, PortfolioRoiItemDto } from '../types/api';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
 import { Modal, ConfirmModal } from '../components/ui/Modal';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
@@ -289,7 +290,9 @@ export function AssetsPage() {
           submitLabel={t('assets.createModal.create')}
           initialValues={defaultFormValues}
           onClose={() => setShowCreateModal(false)}
-          onSubmit={(values) => createAssetMutation.mutateAsync(buildAssetPayload(values))}
+          onSubmit={async (values) => {
+            await createAssetMutation.mutateAsync(buildAssetPayload(values));
+          }}
           submitting={createAssetMutation.isPending}
         />
       )}
@@ -301,12 +304,12 @@ export function AssetsPage() {
           submitLabel={t('assets.edit.save')}
           initialValues={mapAssetToForm(editingAsset)}
           onClose={() => setEditingAsset(null)}
-          onSubmit={(values) =>
-            updateAssetMutation.mutateAsync({
+          onSubmit={async (values) => {
+            await updateAssetMutation.mutateAsync({
               id: editingAsset.id,
               payload: buildAssetPayload(values),
-            })
-          }
+            });
+          }}
           submitting={updateAssetMutation.isPending}
         />
       )}
@@ -408,6 +411,7 @@ interface AllocationCardProps {
 interface AllocationDatum {
   name: string;
   value: number;
+  [key: string]: string | number;
 }
 
 function AllocationCard({ title, loading, data, emptyLabel }: AllocationCardProps) {
@@ -429,7 +433,7 @@ function AllocationCard({ title, loading, data, emptyLabel }: AllocationCardProp
                   <Cell key={`cell-${entry.name}`} fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value: number, _name, entry) => [formatCurrency(value), entry?.payload?.name]} />
+              <Tooltip formatter={(value) => [formatCurrency(typeof value === 'number' ? value : 0), '']} />
               <Legend />
             </PieChart>
           </ResponsiveContainer>
@@ -640,12 +644,19 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
           onChange={(value) => handleChange('name', value)}
           error={errors.name}
         />
-        <AssetFormField
-          label={t('assets.createModal.assetClass')}
-          value={values.assetClass}
-          onChange={(value) => handleChange('assetClass', value)}
-          error={errors.assetClass}
-        />
+        <div className="space-y-1">
+          <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('assets.createModal.assetClass')} <span className="text-red-500">*</span></label>
+          <Select
+            value={values.assetClass}
+            onChange={(e) => handleChange('assetClass', e.target.value)}
+            options={[
+              { value: '', label: 'Select asset class...' },
+              { value: 'stock', label: 'Stock / ETF' },
+              { value: 'metal', label: 'Gold' },
+            ]}
+          />
+          {errors.assetClass && <p className="text-xs text-red-500">{errors.assetClass}</p>}
+        </div>
         <AssetFormField
           label={t('assets.createModal.ticker')}
           value={values.ticker}
@@ -660,11 +671,33 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
             type="number"
             error={errors.quantity}
           />
-          <AssetFormField
-            label={t('assets.createModal.unit')}
-            value={values.unit}
-            onChange={(value) => handleChange('unit', value)}
-          />
+          {values.assetClass === 'stock' ? (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('assets.createModal.unit')}</label>
+              <div className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-gray-700 dark:text-gray-300">
+                Share
+              </div>
+            </div>
+          ) : values.assetClass === 'metal' ? (
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('assets.createModal.unit')}</label>
+              <Select
+                value={values.unit}
+                onChange={(e) => handleChange('unit', e.target.value)}
+                options={[
+                  { value: 'oz', label: 'Troy Ounce (oz)' },
+                  { value: 'g', label: 'Gram (g)' },
+                  { value: 'kg', label: 'Kilogram (kg)' },
+                ]}
+              />
+            </div>
+          ) : (
+            <AssetFormField
+              label={t('assets.createModal.unit')}
+              value={values.unit}
+              onChange={(value) => handleChange('unit', value)}
+            />
+          )}
         </div>
         <AssetFormField
           label={t('assets.createModal.totalCostBasis')}
@@ -726,7 +759,7 @@ function buildAssetPayload(values: AssetFormValues): CreateAssetRequest {
     assetClass: values.assetClass.trim(),
     ticker: values.ticker.trim() || undefined,
     quantity: Number(values.quantity),
-    unit: values.unit.trim() || undefined,
+    unit: values.assetClass === 'stock' ? 'share' : (values.unit.trim() || undefined),
     costBasisTotal: Number(values.costBasisTotal),
     purchaseDate: values.purchaseDate.trim() || undefined,
     notes: values.notes.trim() || undefined,
@@ -739,7 +772,7 @@ function mapAssetToForm(asset: Asset): AssetFormValues {
     assetClass: asset.assetClass,
     ticker: asset.ticker ?? '',
     quantity: asset.quantity.toString(),
-    unit: asset.unit ?? '',
+    unit: asset.assetClass === 'stock' ? 'share' : (asset.unit ?? ''),
     costBasisTotal: asset.costBasisTotal.toString(),
     purchaseDate: asset.purchaseDate ?? '',
     notes: asset.notes ?? '',
