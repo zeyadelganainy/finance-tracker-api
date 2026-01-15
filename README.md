@@ -110,7 +110,7 @@ cd apps/api
 dotnet test
 ```
 
-The API includes 118 integration tests covering all endpoints, validation, error handling, and multi-user data isolation.
+The API includes 151 integration tests covering all endpoints, validation, error handling, and multi-user data isolation.
 
 ## Deployment
 
@@ -152,33 +152,70 @@ See [API.md](./API.md) for complete API documentation including:
 
 ## Key Features
 
-**Transactions**: Track income and expenses with categories, dates, and descriptions.
+**Transactions**
+- Track income and expenses with categories, dates, and descriptions
+- Create, edit, and delete transactions with full CRUD support
+- Bulk operations: select all and delete multiple transactions at once
+- Attach transactions to specific accounts for better organization
+- Mobile-optimized UI for transaction management on phones
 
-**Categories**: Organize transactions into user-defined categories.
+**CSV & Bank Statement Import**
+- Import transactions from CSV files with customizable column mapping
+- Import OFX (Open Financial Exchange) bank statements
+- Automatic deduplication to prevent duplicate entries
+- Category assignment during import
 
-**Accounts**: Manage bank accounts, credit cards, and investment accounts.
+**Categories**
+- Organize transactions into user-defined categories
+- Create new categories directly from the transaction page
+- Income and expense category types
+- Edit and delete categories (with transaction dependency checks)
 
-**Assets**: Track stocks, cryptocurrencies, and other investments with cost basis and quantity.
+**Accounts**
+- Manage bank accounts, credit cards, and investment accounts
+- Track account balances with manual snapshots
+- Balance history visualization over time
+- Account-specific transaction filtering
 
-**Account Snapshots**: Record account balances at specific dates for historical tracking.
+**Assets & Portfolio**
+- Track stocks, gold, and other investments with cost basis and quantity
+- Real-time market price updates via Finnhub (stocks) and Gold-API (gold)
+- Automatic ROI calculations with unrealized gains/losses
+- Multi-currency support with automatic FX conversion via exchangerate.host
+- Portfolio valuation and allocation charts
+- Mobile-responsive asset management interface
 
-**Net Worth Calculation**: View net worth over time with daily, weekly, or monthly intervals.
+**Account Snapshots**
+- Record account balances at specific dates for historical tracking
+- View balance trends over time with charts
+- Snapshot history displays correctly (bug fixed)
 
-**Monthly Summaries**: See aggregated income, expenses, and category breakdowns by month.
+**Net Worth & Analytics**
+- Calculate net worth over time with daily, weekly, or monthly intervals
+- Monthly summaries with income, expenses, and category breakdowns
+- Portfolio ROI tracking across all assets
 
-**Multi-User Support**: Each user's data is isolated and secure.
+**User Experience**
+- Dark mode and light mode with customizable accent colors
+- Multi-language support: English and French-Canadian
+- Currency selection (USD, CAD, EUR, and more)
+- Responsive design optimized for mobile and desktop
+- Improved sign-in page design
+
+**Multi-User Support**
+- Each user's data is isolated and secure with row-level filtering
+- JWT-based authentication via Supabase
 
 ## Roadmap
 
-- Asset valuation integration (market prices for stocks, crypto, etc.)
-- Budget tracking and alerts
-- Recurring transaction support
-- Export data (CSV, JSON)
-- Mobile-responsive UI improvements
+**Planned Features**
+- Budget tracking and spending alerts
+- Recurring transaction automation
+- Attaching accounts to transactions
 
 ## Tech Details
 
-**Backend Testing**: 118 integration tests with in-memory database
+**Backend Testing**: 151 integration tests with in-memory database
 
 **Database Optimization**:
 - Indexed queries on transaction dates and categories
