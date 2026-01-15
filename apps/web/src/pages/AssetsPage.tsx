@@ -507,71 +507,139 @@ function AssetsTableCard({
           }
         />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
-            <thead>
-              <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                <th className="py-3">{t('assets.table.asset')}</th>
-                <th className="py-3">{t('assets.table.quantity')}</th>
-                <th className="py-3">{t('assets.table.price')}</th>
-                <th className="py-3">{t('assets.table.value')}</th>
-                <th className="py-3">{t('assets.table.gain')}</th>
-                <th className="py-3">{t('assets.table.roi')}</th>
-                <th className="py-3 text-right">{t('assets.table.actions')}</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-              {assets.map((asset) => (
-                <tr key={asset.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
-                  <td className="py-3">
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden md:block overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
+              <thead>
+                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                  <th className="py-3">{t('assets.table.asset')}</th>
+                  <th className="py-3">{t('assets.table.quantity')}</th>
+                  <th className="py-3">{t('assets.table.price')}</th>
+                  <th className="py-3">{t('assets.table.value')}</th>
+                  <th className="py-3">{t('assets.table.gain')}</th>
+                  <th className="py-3">{t('assets.table.roi')}</th>
+                  <th className="py-3 text-right">{t('assets.table.actions')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                {assets.map((asset) => (
+                  <tr key={asset.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
+                    <td className="py-3">
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">{asset.name}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {[asset.ticker, asset.assetClass].filter(Boolean).join(' • ')}
+                      </div>
+                    </td>
+                    <td className="py-3 text-gray-900 dark:text-gray-100">
+                      {asset.quantity} {asset.unit ?? ''}
+                    </td>
+                    <td className="py-3">
+                      {asset.unitPrice ? (
+                        formatCurrency(asset.unitPrice)
+                      ) : (
+                        <Badge variant="info">{t('assets.table.noPrice')}</Badge>
+                      )}
+                    </td>
+                    <td className="py-3 font-semibold text-gray-900 dark:text-gray-50">
+                      {asset.currentValue ? formatCurrency(asset.currentValue) : '—'}
+                      {asset.isQuoteStale && (
+                        <Badge variant="warning" className="ml-2">
+                          {t('assets.table.cached')}
+                        </Badge>
+                      )}
+                    </td>
+                    <td className="py-3">
+                      {asset.unrealizedGain === null ? (
+                        '—'
+                      ) : (
+                        <span className={asset.unrealizedGain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {formatCurrency(asset.unrealizedGain)}
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3">{formatPercent(asset.roiPercent)}</td>
+                    <td className="py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button size="sm" variant="ghost" onClick={() => onEdit(asset)}>
+                          {t('assets.actions.edit')}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => onDelete(asset)}>
+                          {t('assets.actions.delete')}
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {assets.map((asset) => (
+              <div key={asset.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3 bg-white dark:bg-gray-900">
+                <div className="flex items-start justify-between">
+                  <div>
                     <div className="font-semibold text-gray-900 dark:text-gray-100">{asset.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {[asset.ticker, asset.assetClass].filter(Boolean).join(' • ')}
                     </div>
-                  </td>
-                  <td className="py-3 text-gray-900 dark:text-gray-100">
-                    {asset.quantity} {asset.unit ?? ''}
-                  </td>
-                  <td className="py-3">
-                    {asset.unitPrice ? (
-                      formatCurrency(asset.unitPrice)
-                    ) : (
-                      <Badge variant="info">{t('assets.table.noPrice')}</Badge>
-                    )}
-                  </td>
-                  <td className="py-3 font-semibold text-gray-900 dark:text-gray-50">
-                    {asset.currentValue ? formatCurrency(asset.currentValue) : '—'}
-                    {asset.isQuoteStale && (
-                      <Badge variant="warning" className="ml-2">
-                        {t('assets.table.cached')}
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="py-3">
-                    {asset.unrealizedGain === null ? (
-                      '—'
-                    ) : (
-                      <span className={asset.unrealizedGain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
-                        {formatCurrency(asset.unrealizedGain)}
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3">{formatPercent(asset.roiPercent)}</td>
-                  <td className="py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button size="sm" variant="ghost" onClick={() => onEdit(asset)}>
-                        {t('assets.actions.edit')}
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => onDelete(asset)}>
-                        {t('assets.actions.delete')}
-                      </Button>
+                  </div>
+                  {asset.isQuoteStale && (
+                    <Badge variant="warning" className="text-xs">
+                      {t('assets.table.cached')}
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.quantity')}</div>
+                    <div className="text-gray-900 dark:text-gray-100 font-medium">{asset.quantity} {asset.unit ?? ''}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.price')}</div>
+                    <div className="text-gray-900 dark:text-gray-100 font-medium">
+                      {asset.unitPrice ? formatCurrency(asset.unitPrice) : <Badge variant="info">{t('assets.table.noPrice')}</Badge>}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.value')}</div>
+                    <div className="text-gray-900 dark:text-gray-100 font-semibold">
+                      {asset.currentValue ? formatCurrency(asset.currentValue) : '—'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.gain')}</div>
+                    <div className="font-medium">
+                      {asset.unrealizedGain === null ? (
+                        '—'
+                      ) : (
+                        <span className={asset.unrealizedGain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                          {formatCurrency(asset.unrealizedGain)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-span-2">
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.roi')}</div>
+                    <div className="text-gray-900 dark:text-gray-100 font-medium">{formatPercent(asset.roiPercent)}</div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <Button size="sm" variant="ghost" onClick={() => onEdit(asset)} className="flex-1">
+                    {t('assets.actions.edit')}
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => onDelete(asset)} className="flex-1">
+                    {t('assets.actions.delete')}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </Card>
   );

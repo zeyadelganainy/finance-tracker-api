@@ -66,7 +66,7 @@ export function Navigation() {
                    style={{ background: 'linear-gradient(to bottom right, var(--accent-color), var(--accent-color-hover))' }}>
                 <span className="text-white font-bold text-xl">$</span>
               </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
+              <span className="text-xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-gray-100 dark:to-gray-300 bg-clip-text text-transparent">
                 Finance Tracker
               </span>
             </Link>
