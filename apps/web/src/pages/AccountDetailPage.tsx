@@ -39,8 +39,15 @@ export function AccountDetailPage() {
   // Fetch account snapshots
   const { data: snapshots = [], isLoading: loadingSnapshots } = useQuery({
     queryKey: ['account-snapshots', id],
-    queryFn: () => apiFetch<AccountSnapshot[]>(`/accounts/${id}/snapshots`),
-    enabled: !!id,
+    queryFn: async () => {
+      if (!id) {
+        console.error('Account ID is undefined');
+        return [];
+      }
+      console.log('Fetching snapshots for account:', id);
+      return apiFetch<AccountSnapshot[]>(`/accounts/${id}/snapshots`);
+    },
+    enabled: !!id && !!account,
   });
   
   // Upsert snapshot mutation

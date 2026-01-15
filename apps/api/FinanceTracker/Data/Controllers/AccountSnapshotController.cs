@@ -22,6 +22,33 @@ public class AccountSnapshotController : ControllerBase
         _currentUser = currentUser;
     }
 
+    // GET /accounts/{accountId}/snapshots
+    [HttpGet]
+    public async Task<IActionResult> List(Guid accountId)
+    {
+        var userId = Guid.Parse(_currentUser.UserId);
+
+        // Verify account exists and belongs to user
+        var accountExists = await _db.Accounts
+            .AnyAsync(a => a.Id == accountId && a.UserId == userId);
+        if (!accountExists)
+            return NotFound(new { error = "Account not found" });
+
+        var snapshots = await _db.AccountSnapshots
+            .AsNoTracking()
+            .Where(s => s.AccountId == accountId && s.UserId == userId)
+            .OrderByDescending(s => s.Date)
+            .Select(s => new SnapshotResponse(
+                s.Id,
+                s.AccountId,
+                s.Date.ToString("yyyy-MM-dd"),
+                s.Balance
+            ))
+            .ToListAsync();
+
+        return Ok(snapshots);
+    }
+
     // PUT /accounts/{accountId}/snapshots/{date}
     [HttpPut("{date}")]
     public async Task<IActionResult> Upsert(Guid accountId, string date, UpsertSnapshotRequest req)
