@@ -324,10 +324,10 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
           />
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-gray-400 transition-colors cursor-pointer"
+            className="cursor-pointer rounded-md border-2 border-dashed border-line-strong p-12 text-center transition-colors hover:border-accent"
           >
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-12 w-12 text-ink-faint"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -339,8 +339,8 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
                 d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
               />
             </svg>
-            <p className="mt-2 text-sm font-medium text-gray-900">Click to upload CSV file</p>
-            <p className="mt-1 text-xs text-gray-500">or drag and drop</p>
+            <p className="mt-2 text-sm font-medium text-ink">Click to upload CSV file</p>
+            <p className="mt-1 text-xs text-ink-muted">or drag and drop</p>
           </div>
         </div>
       )}
@@ -350,8 +350,8 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
         <>
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-900">{file.name}</p>
-              <p className="text-xs text-gray-500">{parsedData.length} rows</p>
+              <p className="text-sm font-medium text-ink">{file.name}</p>
+              <p className="text-xs text-ink-muted">{parsedData.length} rows</p>
             </div>
             <Button
               variant="ghost"
@@ -375,11 +375,11 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
           />
 
           {validationErrors.length > 0 && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <h4 className="text-sm font-semibold text-red-900 mb-2">Validation Errors</h4>
-              <ul className="list-disc list-inside space-y-1">
+            <div className="rounded-md border border-line bg-app-elevated p-4">
+              <h4 className="mb-2 text-sm font-semibold text-danger">Validation Errors</h4>
+              <ul className="list-inside list-disc space-y-1">
                 {validationErrors.map((error, idx) => (
-                  <li key={idx} className="text-sm text-red-700">
+                  <li key={idx} className="text-sm text-danger">
                     {error}
                   </li>
                 ))}
@@ -389,7 +389,7 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
 
           <CsvPreviewTable data={previewData} mapping={mapping} />
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 border-t border-line pt-4">
             <Button variant="outline" onClick={onCancel} disabled={importing}>
               Cancel
             </Button>
@@ -403,30 +403,30 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
       {/* Import Summary */}
       {importSummary && (
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">Import Complete</h4>
+          <div className="rounded-md border border-line bg-app-elevated p-6">
+            <h4 className="mb-4 font-display text-lg text-ink">Import Complete</h4>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-green-600">{importSummary.imported}</p>
-                <p className="text-sm text-gray-600">Imported</p>
+                <p className="font-mono text-2xl font-semibold text-success tnum">{importSummary.imported}</p>
+                <p className="text-sm text-ink-muted">Imported</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-600">{importSummary.skipped}</p>
-                <p className="text-sm text-gray-600">Skipped (Duplicates)</p>
+                <p className="font-mono text-2xl font-semibold text-ink-muted tnum">{importSummary.skipped}</p>
+                <p className="text-sm text-ink-muted">Skipped (Duplicates)</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-red-600">{importSummary.failed}</p>
-                <p className="text-sm text-gray-600">Failed</p>
+                <p className="font-mono text-2xl font-semibold text-danger tnum">{importSummary.failed}</p>
+                <p className="text-sm text-ink-muted">Failed</p>
               </div>
             </div>
           </div>
 
           {importSummary.errors && importSummary.errors.length > 0 && (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-              <h5 className="text-sm font-semibold text-red-900 mb-2">Import Errors</h5>
-              <div className="max-h-40 overflow-y-auto space-y-1">
+            <div className="rounded-md border border-line bg-app-elevated p-4">
+              <h5 className="mb-2 text-sm font-semibold text-danger">Import Errors</h5>
+              <div className="max-h-40 space-y-1 overflow-y-auto scrollbar-subtle">
                 {importSummary.errors.map((error, idx) => (
-                  <p key={idx} className="text-xs text-red-700">
+                  <p key={idx} className="text-xs text-danger">
                     Row {error.row}: {error.message}
                   </p>
                 ))}
@@ -434,7 +434,7 @@ export function CsvImportStep({ accountId, onSuccess, onCancel }: CsvImportStepP
             </div>
           )}
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
+          <div className="flex justify-end gap-3 border-t border-line pt-4">
             <Button onClick={onCancel}>Done</Button>
           </div>
         </div>

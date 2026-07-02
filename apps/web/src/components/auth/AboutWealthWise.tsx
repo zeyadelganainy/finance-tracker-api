@@ -13,33 +13,38 @@ export function AboutWealthWise({ variant = 'desktop' }: AboutWealthWiseProps) {
 
   return (
     <div
-      className={`rounded-3xl border border-gray-200 shadow-sm ${
-        isMobile
-          ? 'bg-white/70 backdrop-blur p-6'
-          : 'bg-gradient-to-br from-gray-50 via-white to-gray-100 p-10'
+      className={`rounded-card border border-line bg-app-surface shadow-card ${
+        isMobile ? 'p-6' : 'p-10'
       }`}
     >
-      <div className="space-y-4">
-
-        <div className="space-y-2">
-          <h2 className="text-3xl font-semibold text-gray-900">WealthWise</h2>
-          <p className="text-lg font-medium text-gray-700">Your personal finance, simplified.</p>
-          <p className="text-gray-600 leading-relaxed">
-            WealthWise is your personal finance tracker for everyday expenses, recurring subscriptions,
+      <div className="space-y-5">
+        <div className="space-y-3">
+          <span
+            className="grid h-11 w-11 place-items-center rounded-md font-display text-lg"
+            style={{ backgroundColor: 'var(--accent-color)', color: 'var(--accent-contrast)' }}
+          >
+            W
+          </span>
+          <h2 className="font-display text-3xl text-ink">WealthWise</h2>
+          <p className="text-lg font-medium text-ink">Your personal finance, simplified.</p>
+          <p className="leading-relaxed text-ink-muted">
+            A private wealth command center for everyday expenses, recurring subscriptions,
             and long-term net worth insights. Designed to keep you informed without the noise.
           </p>
         </div>
 
         <ul className="space-y-3">
           {bulletItems.map((item) => (
-            <li key={item} className="flex items-start gap-3 text-gray-800">
-              <span className="mt-1 inline-flex h-2.5 w-2.5 rounded-full bg-blue-500/80" />
-              <span className="text-base font-medium">{item}</span>
+            <li key={item} className="flex items-start gap-3 text-ink">
+              <span className="mt-1.5 inline-flex h-1.5 w-1.5 rounded-full bg-accent" />
+              <span className="text-base">{item}</span>
             </li>
           ))}
         </ul>
 
-        <div className="pt-2 text-sm text-gray-500">React · .NET · PostgreSQL · AWS</div>
+        <div className="border-t border-line pt-4 font-mono text-xs uppercase tracking-wide text-ink-faint">
+          React · .NET · PostgreSQL · AWS
+        </div>
       </div>
     </div>
   );

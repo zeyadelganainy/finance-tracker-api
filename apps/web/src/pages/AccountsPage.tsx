@@ -27,14 +27,14 @@ export function AccountsPage() {
   });
   
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div>
         {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('accountsList.title')}</h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              <h1 className="font-display text-3xl text-ink">{t('accountsList.title')}</h1>
+              <p className="mt-1 text-sm text-ink-muted">
                 {t((accounts || []).length === 1 ? 'accountsList.count' : 'accountsList.countPlural', { count: (accounts || []).length })}
               </p>
             </div>
@@ -60,31 +60,31 @@ export function AccountsPage() {
               <div
                 key={account.id}
                 onClick={() => navigate(`/accounts/${account.id}`)}
-                className="cursor-pointer group"
+                className="group cursor-pointer"
               >
-                <Card className="hover:shadow-lg transition-all hover:scale-[1.02]">
+                <Card className="transition-transform duration-150 hover:-translate-y-0.5">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white text-xl font-bold">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <div className="flex flex-1 items-center gap-3">
+                      <div className="flex h-11 w-11 items-center justify-center rounded-md bg-accent-soft text-accent">
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
                         </svg>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-base font-semibold text-ink transition-colors group-hover:text-accent">
                           {account.name}
                         </h3>
-                        <div className="flex flex-wrap gap-2 mt-2">
+                        <div className="mt-2 flex flex-wrap gap-2">
                           {account.type && <Badge variant="info">{account.type}</Badge>}
                           {account.isLiability && <Badge variant="warning">{t('accountsList.liability')}</Badge>}
                           <Badge variant="default">{account.currency}</Badge>
                         </div>
                         {account.institution && (
-                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{account.institution}</p>
+                          <p className="mt-2 text-xs text-ink-muted">{account.institution}</p>
                         )}
                       </div>
                     </div>
-                    <svg className="w-6 h-6 text-gray-400 dark:text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-5 w-5 text-ink-faint transition-colors group-hover:text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
                   </div>
@@ -93,7 +93,7 @@ export function AccountsPage() {
             ))}
           </div>
         ) : (
-          <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+          <Card>
             <EmptyState
               icon={
                 <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -206,19 +206,19 @@ function CreateAccountModal({ onClose, onSuccess }: CreateAccountModalProps) {
           onChange={(e) => setFormData({ ...formData, currency: e.target.value.toUpperCase() as 'CAD' | 'USD' | 'EUR' | 'GBP' })}
           placeholder="USD"
         />
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-2 rounded-md border border-line bg-app-elevated p-3">
           <input
             type="checkbox"
             id="isLiability"
             checked={formData.isLiability}
             onChange={(e) => setFormData({ ...formData, isLiability: e.target.checked })}
-            className="w-4 h-4 accent-[var(--color-accent-600)] bg-gray-100 dark:bg-gray-900 border-gray-300 dark:border-gray-700 rounded focus:ring-[var(--color-accent-500)] focus:ring-2"
+            className="h-4 w-4 rounded border-line-strong accent-[var(--accent-color)]"
           />
-          <label htmlFor="isLiability" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          <label htmlFor="isLiability" className="text-sm font-medium text-ink">
             {t('accountsList.liabilityLabel')}
           </label>
         </div>
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-800">
+        <div className="flex justify-end gap-3 border-t border-line pt-4">
           <Button type="button" variant="outline" onClick={onClose} disabled={createMutation.isPending}>
             {t('common.cancel')}
           </Button>

@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useParams, useNavigate } from 'react-router-dom';
 import { format, parseISO, parse } from 'date-fns';
 import { useTranslation } from 'react-i18next';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { apiFetch } from '../lib/apiClient';
 import { AccountDetail, AccountSnapshot, UpsertSnapshotRequest, UpdateAccountRequest } from '../types/api';
 import { useToast } from '../components/ui/Toast';
@@ -13,6 +14,7 @@ import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Skeleton } from '../components/ui/Skeleton';
 import { formatCurrency } from '../lib/utils';
+import { useChartTheme, CHART_DEFAULTS, formatCompactCurrency } from '../lib/chartTheme';
 import { ImportTransactionsModal } from '../components/transactions/ImportTransactionsModal';
 
 export function AccountDetailPage() {
@@ -21,7 +23,8 @@ export function AccountDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
-  
+  const theme = useChartTheme();
+
   // State
   const [snapshotDate, setSnapshotDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [balance, setBalance] = useState('');
@@ -119,8 +122,8 @@ export function AccountDetailPage() {
           ← {t('accountDetail.back')}
         </Button>
         <Card>
-          <div className="text-center py-12">
-            <p className="text-lg text-red-600">{t('accountDetail.notFound')}</p>
+          <div className="py-12 text-center">
+            <p className="text-lg text-danger">{t('accountDetail.notFound')}</p>
             <Button className="mt-4" onClick={() => navigate('/accounts')}>
               {t('accountDetail.back')}
             </Button>
@@ -138,10 +141,10 @@ export function AccountDetailPage() {
           ← {t('accountDetail.back')}
         </Button>
         
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{account.name}</h1>
-            <div className="flex flex-wrap gap-2 mt-3">
+            <h1 className="font-display text-3xl text-ink">{account.name}</h1>
+            <div className="mt-3 flex flex-wrap gap-2">
               {account.type && <Badge variant="info">{account.type}</Badge>}
               {account.isLiability && <Badge variant="warning">{t('accountDetail.liability')}</Badge>}
               <Badge variant="default">{account.currency}</Badge>
@@ -157,18 +160,18 @@ export function AccountDetailPage() {
             <Button variant="outline" onClick={() => setIsEditMode(!isEditMode)}>
               {isEditMode ? t('common.cancel') : t('common.edit')}
             </Button>
-            <Button variant="outline" onClick={() => setShowDeleteConfirm(true)} className="border-red-200 text-red-600 hover:bg-red-50">
+            <Button variant="ghost" onClick={() => setShowDeleteConfirm(true)} className="text-danger hover:bg-app-elevated">
               {t('common.delete')}
             </Button>
           </div>
         </div>
-        
+
         {account.institution && (
-          <p className="mt-3 text-sm text-gray-600">
-            <span className="font-medium">{t('accountDetail.institution')}:</span> {account.institution}
+          <p className="mt-3 text-sm text-ink-muted">
+            <span className="font-medium text-ink">{t('accountDetail.institution')}:</span> {account.institution}
           </p>
         )}
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="mt-2 text-xs text-ink-faint">
           {t('accountDetail.created')} {format(parseISO(account.createdAt), 'MMM dd, yyyy')} • {t('accountDetail.updated')} {format(parseISO(account.updatedAt), 'MMM dd, yyyy')}
         </p>
       </div>
@@ -187,23 +190,23 @@ export function AccountDetailPage() {
       
       {/* Latest Balance */}
       {account.latestBalance !== undefined && (
-        <Card className="mb-8 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <Card className="mb-8">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t('accountDetail.latestBalance')}</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-gray-50">{formatCurrency(account.latestBalance)}</p>
+              <p className="eyebrow">{t('accountDetail.latestBalance')}</p>
+              <p className="mt-1 font-mono text-2xl font-semibold text-ink tnum">{formatCurrency(account.latestBalance)}</p>
             </div>
             {account.latestBalanceDate && (
               <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{t('accountDetail.asOf')}</p>
-                <p className="text-lg font-semibold text-gray-900 dark:text-gray-50">
+                <p className="eyebrow">{t('accountDetail.asOf')}</p>
+                <p className="mt-1 text-lg font-semibold text-ink">
                   {format(parseISO(account.latestBalanceDate), 'MMM dd, yyyy')}
                 </p>
               </div>
             )}
             <div>
-              <p className="text-sm text-gray-600 dark:text-gray-400">{t('accountDetail.snapshots')}</p>
-              <p className="text-lg font-semibold text-gray-900 dark:text-gray-50">{account.snapshotCount}</p>
+              <p className="eyebrow">{t('accountDetail.snapshots')}</p>
+              <p className="mt-1 font-mono text-lg font-semibold text-ink tnum">{account.snapshotCount}</p>
             </div>
           </div>
         </Card>
@@ -234,7 +237,7 @@ export function AccountDetailPage() {
             <Button type="submit" isLoading={upsertSnapshotMutation.isPending}>
               {t('accountDetail.saveSnapshot')}
             </Button>
-            <p className="text-sm text-gray-600 pt-2">
+            <p className="pt-2 text-sm text-ink-muted">
               {t('accountDetail.snapshotHelp')}
             </p>
           </div>
@@ -250,48 +253,106 @@ export function AccountDetailPage() {
             ))}
           </div>
         ) : (snapshots || []).length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800">
-              <thead className="bg-gray-50 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {t('accountDetail.date')}
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    {t('accountDetail.balance')}
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
-                {(snapshots || [])
-                  .filter((snapshot: AccountSnapshot) => snapshot.date) // Filter out null/undefined dates
-                  .sort((a: AccountSnapshot, b: AccountSnapshot) => {
-                    // Safely parse dates with fallback to epoch if invalid
-                    const dateA = a.date ? parse(a.date, 'yyyy-MM-dd', new Date()) : new Date(0);
-                    const dateB = b.date ? parse(b.date, 'yyyy-MM-dd', new Date()) : new Date(0);
-                    // Check for invalid dates and return 0 if either is invalid
-                    if (isNaN(dateB.getTime()) || isNaN(dateA.getTime())) return 0;
-                    return dateB.getTime() - dateA.getTime();
-                  })
-                  .map((snapshot: AccountSnapshot) => (
-                    <tr key={snapshot.date} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-gray-100">
-                        {snapshot.date && !isNaN(parse(snapshot.date, 'yyyy-MM-dd', new Date()).getTime())
-                          ? format(parse(snapshot.date, 'yyyy-MM-dd', new Date()), 'MMM dd, yyyy')
-                          : t('accountDetail.invalidDate')}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-right">
-                        <span className="font-semibold text-gray-900 dark:text-gray-50">
-                          {formatCurrency(snapshot.balance)}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+          (() => {
+            const validSnapshots = (snapshots || []).filter((s: AccountSnapshot) => s.date);
+            const ascending = [...validSnapshots].sort((a, b) => {
+              const da = parse(a.date, 'yyyy-MM-dd', new Date()).getTime();
+              const db = parse(b.date, 'yyyy-MM-dd', new Date()).getTime();
+              return da - db;
+            });
+            const descending = [...ascending].reverse();
+            const chartData = ascending.map((s) => ({
+              date: format(parse(s.date, 'yyyy-MM-dd', new Date()), 'MMM dd'),
+              balance: s.balance,
+            }));
+            return (
+              <div className="space-y-6">
+                {chartData.length > 1 && (
+                  <div className="h-56">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                        <defs>
+                          <linearGradient id="balFill" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={theme.accent} stopOpacity={0.2} />
+                            <stop offset="100%" stopColor={theme.accent} stopOpacity={0} />
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid vertical={false} stroke={theme.grid} />
+                        <XAxis
+                          dataKey="date"
+                          tickLine={false}
+                          axisLine={false}
+                          tick={{ fill: theme.axis, ...CHART_DEFAULTS.axisTick }}
+                          minTickGap={28}
+                        />
+                        <YAxis
+                          tickLine={false}
+                          axisLine={false}
+                          width={56}
+                          tick={{ fill: theme.axis, ...CHART_DEFAULTS.axisTick }}
+                          tickFormatter={(v) => formatCompactCurrency(Number(v))}
+                        />
+                        <Tooltip
+                          cursor={{ stroke: theme.axis, strokeDasharray: '3 3' }}
+                          contentStyle={{
+                            background: theme.tooltip.bg,
+                            border: `1px solid ${theme.tooltip.border}`,
+                            borderRadius: 8,
+                            color: theme.tooltip.text,
+                          }}
+                          labelStyle={{ color: theme.axis }}
+                          formatter={((value: number) => [formatCurrency(Number(value)), t('accountDetail.balance')]) as never}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="balance"
+                          stroke={theme.accent}
+                          strokeWidth={1.5}
+                          fill="url(#balFill)"
+                          dot={false}
+                          activeDot={{ r: 3, fill: theme.accent, stroke: theme.tooltip.bg, strokeWidth: 2 }}
+                          isAnimationActive={CHART_DEFAULTS.animate}
+                          animationDuration={CHART_DEFAULTS.animationDuration}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead>
+                      <tr className="border-b border-line">
+                        <th className="px-6 py-3 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                          {t('accountDetail.date')}
+                        </th>
+                        <th className="px-6 py-3 text-right text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                          {t('accountDetail.balance')}
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {descending.map((snapshot: AccountSnapshot) => (
+                        <tr key={snapshot.date} className="transition-colors hover:bg-app-elevated">
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-ink">
+                            {snapshot.date && !isNaN(parse(snapshot.date, 'yyyy-MM-dd', new Date()).getTime())
+                              ? format(parse(snapshot.date, 'yyyy-MM-dd', new Date()), 'MMM dd, yyyy')
+                              : t('accountDetail.invalidDate')}
+                          </td>
+                          <td className="whitespace-nowrap px-6 py-4 text-right">
+                            <span className="font-mono text-sm font-semibold text-ink tnum">
+                              {formatCurrency(snapshot.balance)}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            );
+          })()
         ) : (
-          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+          <div className="py-8 text-center text-ink-muted">
             {t('accountDetail.noSnapshots')}
           </div>
         )}
@@ -301,8 +362,8 @@ export function AccountDetailPage() {
       {showDeleteConfirm && (
         <Modal isOpen onClose={() => setShowDeleteConfirm(false)} title={t('accountDetail.deleteTitle')} size="sm">
           <div className="space-y-4">
-            <p className="text-gray-700 dark:text-gray-200" dangerouslySetInnerHTML={{ __html: t('accountDetail.deleteBody', { name: account.name }) }} />
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <p className="text-ink" dangerouslySetInnerHTML={{ __html: t('accountDetail.deleteBody', { name: account.name }) }} />
+            <p className="text-sm text-ink-muted">
               {t('accountDetail.deleteSnapshots')}
             </p>
             <div className="flex justify-end gap-3">
@@ -314,9 +375,9 @@ export function AccountDetailPage() {
                 {t('common.cancel')}
               </Button>
               <Button
+                variant="danger"
                 onClick={handleDelete}
                 isLoading={deleteAccountMutation.isPending}
-                className="bg-red-600 hover:bg-red-700 text-white"
               >
                 {t('accountDetail.deleteTitle')}
               </Button>
@@ -386,8 +447,8 @@ function EditAccountForm({ account, onSuccess, onCancel }: EditAccountFormProps)
   };
   
   return (
-    <Card className="mb-8 border-blue-200 bg-blue-50 dark:border-gray-700 dark:bg-gray-900">
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 mb-4">{t('accountDetail.editAccount')}</h3>
+    <Card className="mb-8">
+      <h3 className="mb-4 font-display text-lg text-ink">{t('accountDetail.editAccount')}</h3>
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Input
@@ -421,20 +482,20 @@ function EditAccountForm({ account, onSuccess, onCancel }: EditAccountFormProps)
           />
         </div>
         
-        <div className="flex items-center gap-3 p-3 rounded-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800">
+        <div className="flex items-center gap-3 rounded-md border border-line bg-app-elevated p-3">
           <input
             type="checkbox"
             id="isLiability"
             checked={formData.isLiability}
             onChange={(e) => setFormData({ ...formData, isLiability: e.target.checked })}
-            className="w-4 h-4 text-[var(--accent-color,#4f46e5)] bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded focus:ring-[var(--accent-color,#4f46e5)] focus:ring-2"
+            className="h-4 w-4 rounded border-line-strong accent-[var(--accent-color)]"
           />
-          <label htmlFor="isLiability" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+          <label htmlFor="isLiability" className="text-sm font-medium text-ink">
             {t('accountDetail.liabilityLabel')}
           </label>
         </div>
-        
-        <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+
+        <div className="flex justify-end gap-3 border-t border-line pt-4">
           <Button type="button" variant="outline" onClick={onCancel} disabled={updateMutation.isPending}>
             {t('common.cancel')}
           </Button>

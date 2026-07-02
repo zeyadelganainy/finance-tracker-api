@@ -47,18 +47,18 @@ export function CategorySelect({
     <div className="space-y-2">
       {label ? (
         <div className="flex items-center justify-between">
-          <label className="block text-sm font-medium text-gray-800 dark:text-gray-200">
+          <label className="block text-xs font-medium text-ink-muted">
             {label}
-            {required ? <span className="text-red-500 ml-0.5">*</span> : null}
+            {required ? <span className="ml-0.5 text-danger">*</span> : null}
           </label>
           {selected ? (
-            <span className="text-xs text-gray-500 dark:text-gray-400">{selected.type ? selected.type : '—'}</span>
+            <span className="text-xs capitalize text-ink-faint">{selected.type ? selected.type : '—'}</span>
           ) : null}
         </div>
       ) : null}
 
-      <div className={`rounded-xl border ${disabled ? 'bg-gray-50' : 'bg-white dark:bg-gray-900'} shadow-sm overflow-hidden border-gray-200 dark:border-gray-800`}>
-        <div className="p-3 border-b bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+      <div className="overflow-hidden rounded-md border border-line-strong bg-app-surface">
+        <div className="border-b border-line p-3">
           <Input
             type="search"
             placeholder={t('categories.searchPlaceholder', { defaultValue: 'Search categories' })}
@@ -67,9 +67,9 @@ export function CategorySelect({
             disabled={disabled}
           />
         </div>
-        <div className="max-h-56 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-800">
+        <div className="max-h-56 divide-y divide-line overflow-y-auto scrollbar-subtle">
           {options.length === 0 ? (
-            <div className="p-3 text-sm text-gray-500 dark:text-gray-400">{t('categories.searchEmpty', { defaultValue: 'No categories match your search' })}</div>
+            <div className="p-3 text-sm text-ink-muted">{t('categories.searchEmpty', { defaultValue: 'No categories match your search' })}</div>
           ) : (
             options.map((category) => {
               const isActive = category.id === value;
@@ -77,17 +77,17 @@ export function CategorySelect({
                 <button
                   key={category.id}
                   type="button"
-                  className={`w-full text-left px-4 py-3 text-sm flex items-center justify-between transition ${
+                  className={`flex w-full items-center justify-between px-4 py-3 text-left text-sm transition-colors ${
                     isActive
-                      ? 'bg-[var(--accent-color-soft,rgba(99,102,241,0.12))] text-[var(--accent-color,#4f46e5)] font-semibold'
-                      : 'hover:bg-gray-50 dark:hover:bg-gray-800 text-gray-800 dark:text-gray-100'
-                  } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      ? 'bg-accent-soft font-semibold text-accent'
+                      : 'text-ink hover:bg-app-elevated'
+                  } ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
                   onClick={() => !disabled && onChange(category.id)}
                   disabled={disabled}
                 >
                   <span>{category.name}</span>
                   {category.type ? (
-                    <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{category.type}</span>
+                    <span className="text-xs capitalize text-ink-faint">{category.type}</span>
                   ) : null}
                 </button>
               );
@@ -95,11 +95,11 @@ export function CategorySelect({
           )}
         </div>
         {onCreateNew ? (
-          <div className="p-3 border-t bg-white dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+          <div className="border-t border-line p-3">
             <Button
               type="button"
               variant="ghost"
-              className="w-full justify-start text-[var(--accent-color)] hover:text-[var(--accent-color-hover)]"
+              className="w-full justify-start text-accent hover:text-accent-hover"
               onClick={onCreateNew}
               disabled={disabled}
             >
@@ -108,7 +108,7 @@ export function CategorySelect({
           </div>
         ) : null}
       </div>
-      {warning ? <p className="text-sm text-amber-600 dark:text-amber-400">{warning}</p> : null}
+      {warning ? <p className="text-sm text-warning">{warning}</p> : null}
     </div>
   );
 }

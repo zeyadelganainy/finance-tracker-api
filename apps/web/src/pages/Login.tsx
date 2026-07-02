@@ -50,25 +50,23 @@ export function LoginPage() {
       about={<AboutWealthWise />}
       mobileAbout={<AboutWealthWise variant="mobile" />}
     >
-      <div className="bg-white/90 backdrop-blur shadow-xl border border-gray-100 rounded-2xl p-8 sm:p-10 space-y-8">
+      <div className="rounded-card border border-line bg-app-surface p-8 shadow-card sm:p-10 space-y-8">
         <div className="space-y-2 text-center">
-          <p className="text-xs font-semibold tracking-[0.2em] text-gray-500 uppercase">{t('auth.welcome')}</p>
-          <h1 className="text-3xl font-bold text-gray-900">{t('auth.signIn')}</h1>
-          <p className="text-sm text-gray-600">{t('auth.signInDescription')}</p>
+          <p className="eyebrow">{t('auth.welcome')}</p>
+          <h1 className="font-display text-3xl text-ink">{t('auth.signIn')}</h1>
+          <p className="text-sm text-ink-muted">{t('auth.signInDescription')}</p>
         </div>
 
         {info && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm px-4 py-3 rounded-lg">
+          <div className="rounded-md border border-line bg-app-elevated px-4 py-3 text-sm text-ink">
             {info}
           </div>
         )}
 
         {error && (
           <div
-            className={`border text-sm px-4 py-3 rounded-lg ${
-              error.includes('verified') || error.includes('verify')
-                ? 'bg-yellow-50 border-yellow-200 text-yellow-800'
-                : 'bg-red-50 border-red-200 text-red-700'
+            className={`rounded-md border border-line bg-app-elevated px-4 py-3 text-sm ${
+              error.includes('verified') || error.includes('verify') ? 'text-warning' : 'text-danger'
             }`}
           >
             {error.includes('verified') || error.includes('verify') ? (
@@ -84,24 +82,24 @@ export function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-800">{t('auth.email')}</label>
+            <label className="block text-xs font-medium text-ink-muted">{t('auth.email')}</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
+              className="w-full rounded-md border border-line-strong bg-app-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               required
               autoComplete="email"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-gray-800">{t('auth.password')}</label>
+            <label className="block text-xs font-medium text-ink-muted">{t('auth.password')}</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-gray-900 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:border-[var(--accent-color,#4f46e5)]"
+              className="w-full rounded-md border border-line-strong bg-app-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
               required
               autoComplete="current-password"
             />
@@ -110,7 +108,7 @@ export function LoginPage() {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-[var(--accent-color,#4f46e5)] text-white py-2.5 rounded-lg font-semibold shadow-sm hover:bg-[var(--accent-color-hover,#4338ca)] transition focus:outline-none focus:ring-2 focus:ring-[var(--accent-color,#4f46e5)] focus:ring-offset-2 disabled:opacity-50"
+            className="w-full rounded-md bg-accent py-2.5 font-semibold text-accent-contrast transition-colors hover:bg-accent-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface disabled:opacity-50"
           >
             {isLoading ? t('auth.signingIn') : t('auth.signIn')}
           </button>
@@ -120,10 +118,10 @@ export function LoginPage() {
           <>
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-200" />
+                <div className="w-full border-t border-line" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">{t('auth.or')}</span>
+                <span className="bg-app-surface px-2 text-ink-faint">{t('auth.or')}</span>
               </div>
             </div>
 
@@ -131,10 +129,10 @@ export function LoginPage() {
               type="button"
               onClick={handleDemo}
               disabled={isLoading}
-              className="w-full bg-gray-900 text-white py-2.5 rounded-lg font-semibold hover:bg-gray-800 transition focus:outline-none focus:ring-2 focus:ring-gray-700 focus:ring-offset-2 disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-md border border-line-strong py-2.5 font-semibold text-ink transition-colors hover:bg-app-elevated focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface disabled:opacity-50"
               title={t('auth.demoHint')}
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5 text-accent" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               {t('auth.continueDemo')}
@@ -142,10 +140,10 @@ export function LoginPage() {
           </>
         )}
 
-        <div className="space-y-2 text-center text-sm text-gray-600">
+        <div className="space-y-2 text-center text-sm text-ink-muted">
           <p>
             {t('auth.noAccount')}{' '}
-            <Link to="/register" className="text-blue-700 font-semibold hover:underline">
+            <Link to="/register" className="font-semibold text-accent hover:underline">
               {t('auth.createOne')}
             </Link>
           </p>

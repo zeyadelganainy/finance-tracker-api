@@ -2,29 +2,116 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom styles */
+/* ==========================================================================
+   WealthWise — "Private Banking Terminal" design tokens
+   Semantic tokens as CSS custom properties so dark/light is a single class
+   toggle on <html>. Accent (--accent-color) is theme-aware gold by default and
+   can be overridden inline by the accent-color customization feature.
+   ========================================================================== */
+
 @layer base {
   :root {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    /* Light mode (warm off-white) */
+    --bg-base: #fafaf7;
+    --bg-surface: #ffffff;
+    --bg-elevated: #f2f1ee;
 
-    /* Accent color variables */
-    --accent-color: #3b82f6; /* blue-500 */
-    --accent-color-hover: #2563eb; /* blue-600 */
-  }
+    --text-primary: #1a1a1a;
+    --text-secondary: #6b6b6b;
+    --text-faint: #9a9a96;
 
-  html {
-    @apply bg-white text-gray-900;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    --border-strong: rgba(0, 0, 0, 0.14);
+
+    /* Accent — darker gold variant for light backgrounds */
+    --accent-color: #a8853a;
+    --accent-color-hover: #8a6e30;
+    --accent-soft: rgba(168, 133, 58, 0.1);
+    --accent-contrast: #ffffff;
+
+    --success: #2f8f5b;
+    --danger: #c0455b;
+    --warning: #b8862f;
+
+    --shadow-card: 0 1px 2px rgba(16, 17, 23, 0.04), 0 2px 8px rgba(16, 17, 23, 0.05);
+    --shadow-pop: 0 8px 30px rgba(16, 17, 23, 0.12);
+
+    color-scheme: light;
   }
 
   html.dark {
-    @apply bg-gray-950 text-gray-100;
+    /* Dark mode (deep charcoal — primary) */
+    --bg-base: #0f1117;
+    --bg-surface: #161820;
+    --bg-elevated: #1e2028;
+
+    --text-primary: #e8e6e1;
+    --text-secondary: #8a8b8e;
+    --text-faint: #5a5b5e;
+
+    --border-subtle: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.12);
+
+    /* Accent — muted gold / champagne for dark backgrounds */
+    --accent-color: #c9a96e;
+    --accent-color-hover: #d8bd87;
+    --accent-soft: rgba(201, 169, 110, 0.12);
+    --accent-contrast: #14151b;
+
+    --success: #4caf82;
+    --danger: #cf6679;
+    --warning: #e8b86d;
+
+    --shadow-card: none;
+    --shadow-pop: 0 16px 48px rgba(0, 0, 0, 0.55);
+
+    color-scheme: dark;
+  }
+
+  html {
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+  }
+
+  body {
+    background-color: var(--bg-base);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tabular, monospaced figures for all financial numbers */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+}
+
+@layer components {
+  /* Section eyebrow label — uppercase, wide-tracked, muted */
+  .eyebrow {
+    @apply text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-ink-muted;
   }
 }
 
 @layer utilities {
   .spinner {
     animation: spin 1s linear infinite;
+  }
+
+  /* Custom thin scrollbars to match the terminal aesthetic */
+  .scrollbar-subtle {
+    scrollbar-width: thin;
+    scrollbar-color: var(--border-strong) transparent;
+  }
+  .scrollbar-subtle::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  .scrollbar-subtle::-webkit-scrollbar-thumb {
+    background-color: var(--border-strong);
+    border-radius: 9999px;
   }
 }
 
@@ -37,3 +124,36 @@
   }
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 150ms ease-out both;
+}
+.animate-rise-in {
+  animation: rise-in 220ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-rise-in {
+    animation: none;
+  }
+}

@@ -4,6 +4,12 @@ import i18n from '../i18n';
 
 const STORAGE_KEY = 'wealthwise:settings';
 
+const VALID_ACCENTS: AccentColor[] = ['gold', 'sage', 'slate', 'rose', 'stone'];
+
+function coerceAccent(value: unknown): AccentColor {
+  return VALID_ACCENTS.includes(value as AccentColor) ? (value as AccentColor) : 'gold';
+}
+
 function loadSettings(): AppSettings {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (raw) {
@@ -13,7 +19,7 @@ function loadSettings(): AppSettings {
         language: parsed.language ?? 'en',
         currency: parsed.currency ?? 'CAD',
         themeMode: parsed.themeMode ?? 'system',
-        accentColor: parsed.accentColor ?? 'blue',
+        accentColor: coerceAccent(parsed.accentColor),
       };
     } catch {}
   }
@@ -21,7 +27,7 @@ function loadSettings(): AppSettings {
     language: 'en',
     currency: 'CAD',
     themeMode: 'system',
-    accentColor: 'blue',
+    accentColor: 'gold',
   };
 }
 
@@ -35,19 +41,31 @@ function applyTheme(mode: ThemeMode) {
   root.classList.toggle('dark', isDark);
 }
 
-const ACCENT_COLORS: Record<AccentColor, { base: string; hover: string }> = {
-  blue: { base: '#3b82f6', hover: '#2563eb' },
-  emerald: { base: '#10b981', hover: '#0ea5e9' /* using teal hover for better contrast */ },
-  purple: { base: '#8b5cf6', hover: '#7c3aed' },
-  orange: { base: '#f59e0b', hover: '#d97706' },
-  rose: { base: '#f43f5e', hover: '#e11d48' },
+// Refined, muted accent options. 'gold' is the signature default and is left to
+// the theme-aware CSS variables (different value in light vs dark); the others
+// apply a single inline override on both themes.
+const ACCENT_COLORS: Record<Exclude<AccentColor, 'gold'>, { base: string; hover: string; soft: string }> = {
+  sage: { base: '#5b8a72', hover: '#4d7a63', soft: 'rgba(91, 138, 114, 0.12)' },
+  slate: { base: '#6b7fa3', hover: '#5c6f91', soft: 'rgba(107, 127, 163, 0.12)' },
+  rose: { base: '#a67c8a', hover: '#946b79', soft: 'rgba(166, 124, 138, 0.12)' },
+  stone: { base: '#8b8569', hover: '#79745a', soft: 'rgba(139, 133, 105, 0.12)' },
 };
 
 function applyAccent(color: AccentColor) {
-  const { base, hover } = ACCENT_COLORS[color];
   const root = document.documentElement;
+  if (color === 'gold') {
+    // Defer to the theme's gold tokens defined in index.css
+    root.style.removeProperty('--accent-color');
+    root.style.removeProperty('--accent-color-hover');
+    root.style.removeProperty('--accent-soft');
+    root.style.removeProperty('--accent-contrast');
+    return;
+  }
+  const { base, hover, soft } = ACCENT_COLORS[color];
   root.style.setProperty('--accent-color', base);
   root.style.setProperty('--accent-color-hover', hover);
+  root.style.setProperty('--accent-soft', soft);
+  root.style.setProperty('--accent-contrast', '#ffffff');
 }
 
 interface SettingsContextValue {

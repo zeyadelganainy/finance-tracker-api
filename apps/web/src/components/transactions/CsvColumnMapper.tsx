@@ -26,9 +26,9 @@ export function CsvColumnMapper({ columns, mapping, onMappingChange }: CsvColumn
   };
 
   return (
-    <div className="space-y-4 border border-gray-200 rounded-lg p-4 bg-gray-50">
-      <h4 className="text-sm font-semibold text-gray-900">Column Mapping</h4>
-      <p className="text-xs text-gray-600">
+    <div className="space-y-4 rounded-md border border-line bg-app-elevated p-4">
+      <h4 className="text-sm font-semibold text-ink">Column Mapping</h4>
+      <p className="text-xs text-ink-muted">
         Map CSV columns to transaction fields. Required fields are marked with *
       </p>
 
@@ -76,8 +76,8 @@ export function CsvColumnMapper({ columns, mapping, onMappingChange }: CsvColumn
         />
       </div>
 
-      <div className="text-xs text-gray-500 bg-blue-50 border border-blue-200 rounded p-3">
-        <strong>Tip:</strong> If your CSV has separate Debit and Credit columns instead of a single
+      <div className="rounded border border-line bg-app-surface p-3 text-xs text-ink-muted">
+        <strong className="text-ink">Tip:</strong> If your CSV has separate Debit and Credit columns instead of a single
         Amount column, map both. Credits will be positive and debits will be negative.
       </div>
     </div>

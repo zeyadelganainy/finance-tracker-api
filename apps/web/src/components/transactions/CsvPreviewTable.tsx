@@ -19,8 +19,8 @@ interface CsvPreviewTableProps {
 export function CsvPreviewTable({ data, mapping }: CsvPreviewTableProps) {
   if (data.length === 0) {
     return (
-      <div className="rounded-lg border border-gray-200 p-8 text-center">
-        <p className="text-sm text-gray-500">No data to preview</p>
+      <div className="rounded-md border border-line p-8 text-center">
+        <p className="text-sm text-ink-muted">No data to preview</p>
       </div>
     );
   }
@@ -45,46 +45,42 @@ export function CsvPreviewTable({ data, mapping }: CsvPreviewTableProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-semibold text-gray-900">Preview (First 20 Rows)</h4>
-        <p className="text-xs text-gray-500">Showing {data.length} of {data.length} rows</p>
+        <h4 className="text-sm font-semibold text-ink">Preview (First 20 Rows)</h4>
+        <p className="text-xs text-ink-muted">Showing {data.length} of {data.length} rows</p>
       </div>
 
-      <div className="rounded-lg border border-gray-200 overflow-hidden">
+      <div className="overflow-hidden rounded-md border border-line">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-xs font-semibold text-gray-600 uppercase">
+          <table className="min-w-full">
+            <thead>
+              <tr className="border-b border-line">
+                <th className="px-4 py-2 text-left text-xs font-semibold uppercase text-ink-muted">
                   #
                 </th>
                 {allColumns.map((col) => (
                   <th
                     key={col}
                     className={`px-4 py-2 text-left text-xs font-semibold uppercase ${
-                      mappedColumns.has(col)
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-600'
+                      mappedColumns.has(col) ? 'bg-accent-soft text-accent' : 'text-ink-muted'
                     }`}
                   >
                     {col}
                     {mappedColumns.has(col) && (
-                      <span className="ml-1 inline-block w-2 h-2 bg-blue-500 rounded-full"></span>
+                      <span className="ml-1 inline-block h-2 w-2 rounded-full bg-accent"></span>
                     )}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="divide-y divide-line">
               {data.map((row, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 text-xs text-gray-500">{idx + 1}</td>
+                <tr key={idx} className="transition-colors hover:bg-app-elevated">
+                  <td className="px-4 py-2 font-mono text-xs text-ink-faint">{idx + 1}</td>
                   {allColumns.map((col) => (
                     <td
                       key={col}
                       className={`px-4 py-2 text-xs ${
-                        mappedColumns.has(col)
-                          ? 'font-medium text-gray-900 bg-blue-50'
-                          : 'text-gray-700'
+                        mappedColumns.has(col) ? 'bg-accent-soft font-medium text-ink' : 'text-ink-muted'
                       }`}
                     >
                       {row[col]}
