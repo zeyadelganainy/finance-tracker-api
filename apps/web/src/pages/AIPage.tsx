@@ -59,7 +59,7 @@ export function AIPage() {
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h4 className="font-semibold text-ink">{p.title}</h4>
+                    <h4 className="font-display text-base font-medium text-ink">{p.title}</h4>
                     <p className="mt-1 text-sm text-ink-muted">{p.body}</p>
                   </div>
                   <div className="text-3xl">{p.icon}</div>
@@ -76,7 +76,7 @@ export function AIPage() {
       {/* Privacy & Data Section */}
       <Card>
         <div className="space-y-4">
-          <h3 className="font-semibold text-ink">{t('ai.privacyTitle')}</h3>
+          <h3 className="font-display text-base font-medium text-ink">{t('ai.privacyTitle')}</h3>
           <div className="space-y-3 text-sm text-ink-muted">
             <p>
               <strong className="text-ink">Scope:</strong> {t('ai.scope')}
