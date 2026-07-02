@@ -423,7 +423,7 @@ function AllocationCard({ title, loading, data, emptyLabel }: AllocationCardProp
 
   return (
     <Card>
-      <h3 className="eyebrow mb-4">{title}</h3>
+      <h3 className="mb-4 font-display text-base font-medium text-ink">{title}</h3>
       {data.length === 0 ? (
         <p className="text-sm text-ink-muted">{emptyLabel}</p>
       ) : (
@@ -550,44 +550,38 @@ function AssetsTableCard({
           <div className="hidden overflow-x-auto md:block">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-line text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
-                  <th className="py-3">{t('assets.table.asset')}</th>
-                  <th className="py-3 text-right">{t('assets.table.quantity')}</th>
-                  <th className="py-3 text-right">{t('assets.table.price')}</th>
-                  <th className="py-3 text-right">{t('assets.table.value')}</th>
-                  <th className="py-3 text-right">{t('assets.table.gain')}</th>
-                  <th className="py-3 text-right">{t('assets.table.roi')}</th>
-                  <th className="py-3 text-right">{t('assets.table.actions')}</th>
+                <tr className="border-b border-line text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+                  <th className="py-3 pr-4 text-left">{t('assets.table.asset')}</th>
+                  <th className="px-4 py-3 text-right">{t('assets.table.value')}</th>
+                  <th className="hidden px-4 py-3 text-right lg:table-cell">{t('assets.table.quantity')}</th>
+                  <th className="hidden px-4 py-3 text-right lg:table-cell">{t('assets.table.price')}</th>
+                  <th className="px-4 py-3 text-right">{t('assets.table.gain')}</th>
+                  <th className="px-4 py-3 text-right">{t('assets.table.roi')}</th>
+                  <th className="py-3 pl-4 text-right"><span className="sr-only">{t('assets.table.actions')}</span></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
                 {assets.map((asset) => (
                   <tr key={asset.id} className="transition-colors hover:bg-app-elevated">
-                    <td className="py-3">
+                    <td className="py-3 pr-4 align-top">
                       <div className="font-semibold text-ink">{asset.name}</div>
-                      <div className="font-mono text-xs uppercase text-ink-faint">
-                        {[asset.ticker, asset.assetClass].filter(Boolean).join(' • ')}
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <span className="font-mono text-xs uppercase text-ink-faint">
+                          {[asset.ticker, asset.assetClass].filter(Boolean).join(' • ')}
+                        </span>
+                        {asset.isQuoteStale && <Badge variant="warning">{t('assets.table.cached')}</Badge>}
                       </div>
                     </td>
-                    <td className="py-3 text-right font-mono tnum text-ink">
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-semibold tnum text-ink">
+                      {asset.currentValue ? formatCurrency(asset.currentValue) : '—'}
+                    </td>
+                    <td className="hidden whitespace-nowrap px-4 py-3 text-right font-mono tnum text-ink-muted lg:table-cell">
                       {asset.quantity} {asset.unit ?? ''}
                     </td>
-                    <td className="py-3 text-right font-mono tnum text-ink">
-                      {asset.unitPrice ? (
-                        formatCurrency(asset.unitPrice)
-                      ) : (
-                        <Badge variant="info">{t('assets.table.noPrice')}</Badge>
-                      )}
+                    <td className="hidden whitespace-nowrap px-4 py-3 text-right font-mono tnum text-ink-muted lg:table-cell">
+                      {asset.unitPrice ? formatCurrency(asset.unitPrice) : <span className="text-ink-faint">—</span>}
                     </td>
-                    <td className="py-3 text-right font-mono font-semibold tnum text-ink">
-                      {asset.currentValue ? formatCurrency(asset.currentValue) : '—'}
-                      {asset.isQuoteStale && (
-                        <Badge variant="warning" className="ml-2">
-                          {t('assets.table.cached')}
-                        </Badge>
-                      )}
-                    </td>
-                    <td className="py-3 text-right font-mono tnum">
+                    <td className="whitespace-nowrap px-4 py-3 text-right font-mono tnum">
                       {asset.unrealizedGain === null ? (
                         <span className="text-ink-faint">—</span>
                       ) : (
@@ -596,17 +590,29 @@ function AssetsTableCard({
                         </span>
                       )}
                     </td>
-                    <td className="py-3 text-right">
+                    <td className="whitespace-nowrap px-4 py-3 text-right">
                       <RoiBadge roi={asset.roiPercent} />
                     </td>
-                    <td className="py-3 text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button size="sm" variant="ghost" onClick={() => onEdit(asset)}>
-                          {t('assets.actions.edit')}
-                        </Button>
-                        <Button size="sm" variant="ghost" onClick={() => onDelete(asset)}>
-                          {t('assets.actions.delete')}
-                        </Button>
+                    <td className="whitespace-nowrap py-3 pl-4 text-right">
+                      <div className="flex justify-end gap-0.5">
+                        <button
+                          onClick={() => onEdit(asset)}
+                          title={t('assets.actions.edit')}
+                          className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-app-surface hover:text-accent"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => onDelete(asset)}
+                          title={t('assets.actions.delete')}
+                          className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-app-surface hover:text-danger"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -989,7 +995,7 @@ function SectorBreakdownCard({ title, loading, data, emptyLabel }: SectorBreakdo
   if (data.length === 0) {
     return (
       <Card>
-        <h3 className="eyebrow mb-4">{title}</h3>
+        <h3 className="mb-4 font-display text-base font-medium text-ink">{title}</h3>
         <p className="text-sm text-ink-muted">{emptyLabel}</p>
       </Card>
     );
@@ -1000,7 +1006,7 @@ function SectorBreakdownCard({ title, loading, data, emptyLabel }: SectorBreakdo
 
   return (
     <Card>
-      <h3 className="eyebrow mb-4">{title}</h3>
+      <h3 className="mb-4 font-display text-base font-medium text-ink">{title}</h3>
       <div className="space-y-4">
         {sorted.map((item, index) => {
           const percentage = total > 0 ? (item.value / total) * 100 : 0;

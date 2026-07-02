@@ -20,7 +20,7 @@ export function Card({ children, className, title, description, actions }: CardP
       {(title || description || actions) && (
         <div className="flex items-start justify-between gap-4 border-b border-line px-5 py-4">
           <div>
-            {title && <h3 className="text-sm font-semibold text-ink">{title}</h3>}
+            {title && <h3 className="font-display text-base font-medium text-ink">{title}</h3>}
             {description && <p className="mt-0.5 text-xs text-ink-muted">{description}</p>}
           </div>
           {actions && <div className="flex items-center gap-2">{actions}</div>}
