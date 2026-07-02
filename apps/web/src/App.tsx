@@ -31,7 +31,7 @@ function App() {
       <ToastProvider>
         <AuthProvider>
           <BrowserRouter>
-            <main className="min-h-screen bg-gray-50 dark:bg-gray-950">
+            <main className="min-h-screen bg-app-base text-ink">
               <Routes>
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
@@ -62,10 +62,15 @@ export default App;
 
 function ProtectedLayout() {
   return (
-    <>
+    <div className="min-h-screen bg-app-base">
       <Navigation />
-      <Outlet />
-    </>
+      {/* Offset for the fixed sidebar (desktop) and bottom tab bar (mobile) */}
+      <div className="md:pl-60">
+        <div className="min-h-screen pb-20 md:pb-0">
+          <Outlet />
+        </div>
+      </div>
+    </div>
   );
 }
 

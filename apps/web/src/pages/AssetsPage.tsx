@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { ResponsiveContainer, PieChart, Pie, Cell, Legend, Tooltip } from 'recharts';
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { apiFetch } from '../lib/apiClient';
+import { useChartTheme } from '../lib/chartTheme';
 import { Asset, CreateAssetRequest, PortfolioRoiItemDto } from '../types/api';
 import { useToast } from '../components/ui/Toast';
 import { Button } from '../components/ui/Button';
@@ -15,8 +16,6 @@ import { CardSkeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { formatCurrency, formatPercent, formatDateTime } from '../lib/utils';
 import { usePortfolioRoi } from '../hooks/useMarketQuotes';
-
-const ALLOCATION_COLORS = ['#3b82f6', '#a855f7', '#f97316', '#22c55e', '#0ea5e9', '#ec4899', '#facc15'];
 
 // TODO: Move sector classification to backend quotes service once sector metadata is exposed.
 const SECTOR_MAP: Record<string, string> = {
@@ -227,12 +226,12 @@ export function AssetsPage() {
   const summaryLoading = assetsLoading || roiLoading;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 lg:px-8">
+      <div className="space-y-8">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('assets.title')}</h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
+            <h1 className="font-display text-3xl text-ink">{t('assets.title')}</h1>
+            <p className="mt-1 text-sm text-ink-muted">
               {t(
                 assets.length === 1 ? 'assets.count' : 'assets.countPlural',
                 { count: assets.length }
@@ -355,20 +354,20 @@ function PortfolioSummaryCard({
     return <CardSkeleton />;
   }
 
-  const gainClass = gain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+  const gainClass = gain >= 0 ? 'text-success' : 'text-danger';
   const asOfLabel = asOfTimestamp
     ? t('assets.asOf', { date: formatDateTime(asOfTimestamp) })
     : t('assets.asOfPending');
 
   return (
-    <Card className="p-6 space-y-4">
-      <div className="flex items-center justify-between">
+    <Card className="space-y-4">
+      <div className="flex items-start justify-between">
         <div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">{t('assets.totalWorth')}</p>
-          <p className="text-3xl font-semibold text-gray-900 dark:text-gray-50">
+          <p className="eyebrow">{t('assets.totalWorth')}</p>
+          <p className="mt-1 font-display text-3xl text-ink tnum">
             {formatCurrency(totalWorth)}
           </p>
-          <p className="text-xs text-gray-500 mt-1">{t('assets.changePlaceholder')}</p>
+          <p className="mt-1 text-xs text-ink-faint">{t('assets.changePlaceholder')}</p>
         </div>
         {cached && <Badge variant="warning">{t('assets.cached')}</Badge>}
       </div>
@@ -393,8 +392,8 @@ interface SummaryStatProps {
 function SummaryStat({ label, value, valueClass, subtle }: SummaryStatProps) {
   return (
     <div>
-      <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
-      <p className={`text-sm font-semibold text-gray-900 dark:text-gray-100 ${subtle ? 'font-normal' : ''} ${valueClass ?? ''}`}>
+      <p className="text-xs text-ink-muted">{label}</p>
+      <p className={`text-sm font-semibold tnum text-ink ${subtle ? 'font-normal text-ink-muted' : ''} ${valueClass ?? ''}`}>
         {value}
       </p>
     </div>
@@ -415,28 +414,65 @@ interface AllocationDatum {
 }
 
 function AllocationCard({ title, loading, data, emptyLabel }: AllocationCardProps) {
+  const theme = useChartTheme();
   if (loading) {
     return <CardSkeleton />;
   }
 
+  const total = data.reduce((sum, d) => sum + d.value, 0);
+
   return (
-    <Card className="p-6">
-      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{title}</h3>
+    <Card>
+      <h3 className="eyebrow mb-4">{title}</h3>
       {data.length === 0 ? (
-        <p className="text-sm text-gray-500 dark:text-gray-400">{emptyLabel}</p>
+        <p className="text-sm text-ink-muted">{emptyLabel}</p>
       ) : (
-        <div className="h-64">
-          <ResponsiveContainer>
-            <PieChart>
-              <Pie dataKey="value" data={data} outerRadius={80} label={(entry) => `${entry.name}` }>
-                {data.map((entry, index) => (
-                  <Cell key={`cell-${entry.name}`} fill={ALLOCATION_COLORS[index % ALLOCATION_COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => [formatCurrency(typeof value === 'number' ? value : 0), '']} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative h-44 w-full">
+            <ResponsiveContainer>
+              <PieChart>
+                <Pie
+                  dataKey="value"
+                  data={data}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius="62%"
+                  outerRadius="90%"
+                  paddingAngle={2}
+                  stroke="none"
+                >
+                  {data.map((entry, index) => (
+                    <Cell key={`cell-${entry.name}`} fill={theme.colors[index % theme.colors.length]} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    background: theme.tooltip.bg,
+                    border: `1px solid ${theme.tooltip.border}`,
+                    borderRadius: 8,
+                    color: theme.tooltip.text,
+                  }}
+                  formatter={((value: number) => [formatCurrency(typeof value === 'number' ? value : 0), '']) as never}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+              <span className="font-display text-xl text-ink tnum">{formatCurrency(total)}</span>
+            </div>
+          </div>
+          <div className="grid w-full grid-cols-1 gap-1.5">
+            {data.map((entry, index) => (
+              <div key={entry.name} className="flex items-center justify-between gap-2 text-xs">
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: theme.colors[index % theme.colors.length] }} />
+                  <span className="truncate capitalize text-ink-muted">{entry.name}</span>
+                </span>
+                <span className="font-mono tnum text-ink-faint">
+                  {total > 0 ? `${((entry.value / total) * 100).toFixed(0)}%` : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </Card>
@@ -469,22 +505,24 @@ function AssetsTableCard({
   const { t } = useTranslation();
 
   return (
-    <Card className="p-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-4">
+    <Card>
+      <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <Input
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           placeholder={t('assets.searchPlaceholder')}
           className="max-w-sm"
         />
-        <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+        <div className="flex items-center gap-2 text-sm text-ink-muted">
           <span>{t('assets.sortLabel')}</span>
-          <div className="flex rounded-full border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="flex gap-0.5 rounded-md bg-app-elevated p-0.5">
             {(['value', 'gain', 'roi'] as SortKey[]).map((key) => (
               <button
                 key={key}
                 type="button"
-                className={`px-3 py-1 text-xs font-medium ${sortKey === key ? 'bg-gray-900 text-white dark:bg-gray-100 dark:text-gray-900' : ''}`}
+                className={`rounded px-3 py-1 text-xs font-medium transition-colors ${
+                  sortKey === key ? 'bg-app-surface text-accent shadow-card' : 'text-ink-muted hover:text-ink'
+                }`}
                 onClick={() => onSortChange(key)}
               >
                 {t(`assets.sort.${key}`)} {sortKey === key ? (sortDir === 'asc' ? '↑' : '↓') : ''}
@@ -501,7 +539,7 @@ function AssetsTableCard({
           title={t('assets.empty.title')}
           description={t('assets.empty.body')}
           icon={
-            <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-10 w-10" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           }
@@ -509,39 +547,39 @@ function AssetsTableCard({
       ) : (
         <>
           {/* Desktop Table View */}
-          <div className="hidden md:block overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-800 text-sm">
+          <div className="hidden overflow-x-auto md:block">
+            <table className="min-w-full text-sm">
               <thead>
-                <tr className="text-left text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                <tr className="border-b border-line text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                   <th className="py-3">{t('assets.table.asset')}</th>
-                  <th className="py-3">{t('assets.table.quantity')}</th>
-                  <th className="py-3">{t('assets.table.price')}</th>
-                  <th className="py-3">{t('assets.table.value')}</th>
-                  <th className="py-3">{t('assets.table.gain')}</th>
-                  <th className="py-3">{t('assets.table.roi')}</th>
+                  <th className="py-3 text-right">{t('assets.table.quantity')}</th>
+                  <th className="py-3 text-right">{t('assets.table.price')}</th>
+                  <th className="py-3 text-right">{t('assets.table.value')}</th>
+                  <th className="py-3 text-right">{t('assets.table.gain')}</th>
+                  <th className="py-3 text-right">{t('assets.table.roi')}</th>
                   <th className="py-3 text-right">{t('assets.table.actions')}</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+              <tbody className="divide-y divide-line">
                 {assets.map((asset) => (
-                  <tr key={asset.id} className="hover:bg-gray-50 dark:hover:bg-gray-900/40 transition-colors">
+                  <tr key={asset.id} className="transition-colors hover:bg-app-elevated">
                     <td className="py-3">
-                      <div className="font-semibold text-gray-900 dark:text-gray-100">{asset.name}</div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                      <div className="font-semibold text-ink">{asset.name}</div>
+                      <div className="font-mono text-xs uppercase text-ink-faint">
                         {[asset.ticker, asset.assetClass].filter(Boolean).join(' • ')}
                       </div>
                     </td>
-                    <td className="py-3 text-gray-900 dark:text-gray-100">
+                    <td className="py-3 text-right font-mono tnum text-ink">
                       {asset.quantity} {asset.unit ?? ''}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 text-right font-mono tnum text-ink">
                       {asset.unitPrice ? (
                         formatCurrency(asset.unitPrice)
                       ) : (
                         <Badge variant="info">{t('assets.table.noPrice')}</Badge>
                       )}
                     </td>
-                    <td className="py-3 font-semibold text-gray-900 dark:text-gray-50">
+                    <td className="py-3 text-right font-mono font-semibold tnum text-ink">
                       {asset.currentValue ? formatCurrency(asset.currentValue) : '—'}
                       {asset.isQuoteStale && (
                         <Badge variant="warning" className="ml-2">
@@ -549,18 +587,20 @@ function AssetsTableCard({
                         </Badge>
                       )}
                     </td>
-                    <td className="py-3">
+                    <td className="py-3 text-right font-mono tnum">
                       {asset.unrealizedGain === null ? (
-                        '—'
+                        <span className="text-ink-faint">—</span>
                       ) : (
-                        <span className={asset.unrealizedGain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        <span className={asset.unrealizedGain >= 0 ? 'text-success' : 'text-danger'}>
                           {formatCurrency(asset.unrealizedGain)}
                         </span>
                       )}
                     </td>
-                    <td className="py-3">{formatPercent(asset.roiPercent)}</td>
                     <td className="py-3 text-right">
-                      <div className="flex justify-end gap-2">
+                      <RoiBadge roi={asset.roiPercent} />
+                    </td>
+                    <td className="py-3 text-right">
+                      <div className="flex justify-end gap-1">
                         <Button size="sm" variant="ghost" onClick={() => onEdit(asset)}>
                           {t('assets.actions.edit')}
                         </Button>
@@ -576,13 +616,13 @@ function AssetsTableCard({
           </div>
 
           {/* Mobile Card View */}
-          <div className="md:hidden space-y-3">
+          <div className="space-y-3 md:hidden">
             {assets.map((asset) => (
-              <div key={asset.id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3 bg-white dark:bg-gray-900">
+              <div key={asset.id} className="space-y-3 rounded-md border border-line bg-app-surface p-4">
                 <div className="flex items-start justify-between">
                   <div>
-                    <div className="font-semibold text-gray-900 dark:text-gray-100">{asset.name}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    <div className="font-semibold text-ink">{asset.name}</div>
+                    <div className="mt-0.5 font-mono text-xs uppercase text-ink-faint">
                       {[asset.ticker, asset.assetClass].filter(Boolean).join(' • ')}
                     </div>
                   </div>
@@ -595,40 +635,40 @@ function AssetsTableCard({
 
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.quantity')}</div>
-                    <div className="text-gray-900 dark:text-gray-100 font-medium">{asset.quantity} {asset.unit ?? ''}</div>
+                    <div className="text-xs text-ink-muted">{t('assets.table.quantity')}</div>
+                    <div className="font-mono font-medium tnum text-ink">{asset.quantity} {asset.unit ?? ''}</div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.price')}</div>
-                    <div className="text-gray-900 dark:text-gray-100 font-medium">
+                    <div className="text-xs text-ink-muted">{t('assets.table.price')}</div>
+                    <div className="font-mono font-medium tnum text-ink">
                       {asset.unitPrice ? formatCurrency(asset.unitPrice) : <Badge variant="info">{t('assets.table.noPrice')}</Badge>}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.value')}</div>
-                    <div className="text-gray-900 dark:text-gray-100 font-semibold">
+                    <div className="text-xs text-ink-muted">{t('assets.table.value')}</div>
+                    <div className="font-mono font-semibold tnum text-ink">
                       {asset.currentValue ? formatCurrency(asset.currentValue) : '—'}
                     </div>
                   </div>
                   <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.gain')}</div>
-                    <div className="font-medium">
+                    <div className="text-xs text-ink-muted">{t('assets.table.gain')}</div>
+                    <div className="font-mono font-medium tnum">
                       {asset.unrealizedGain === null ? (
-                        '—'
+                        <span className="text-ink-faint">—</span>
                       ) : (
-                        <span className={asset.unrealizedGain >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>
+                        <span className={asset.unrealizedGain >= 0 ? 'text-success' : 'text-danger'}>
                           {formatCurrency(asset.unrealizedGain)}
                         </span>
                       )}
                     </div>
                   </div>
                   <div className="col-span-2">
-                    <div className="text-xs text-gray-500 dark:text-gray-400">{t('assets.table.roi')}</div>
-                    <div className="text-gray-900 dark:text-gray-100 font-medium">{formatPercent(asset.roiPercent)}</div>
+                    <div className="text-xs text-ink-muted">{t('assets.table.roi')}</div>
+                    <RoiBadge roi={asset.roiPercent} />
                   </div>
                 </div>
 
-                <div className="flex gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+                <div className="flex gap-2 border-t border-line pt-2">
                   <Button size="sm" variant="ghost" onClick={() => onEdit(asset)} className="flex-1">
                     {t('assets.actions.edit')}
                   </Button>
@@ -642,6 +682,23 @@ function AssetsTableCard({
         </>
       )}
     </Card>
+  );
+}
+
+function RoiBadge({ roi }: { roi: number | null }) {
+  if (roi === null || roi === undefined) {
+    return <span className="font-mono text-sm text-ink-faint tnum">—</span>;
+  }
+  const positive = roi >= 0;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-mono text-xs font-medium tnum ${
+        positive ? 'text-success' : 'text-danger'
+      }`}
+      style={{ background: 'var(--accent-soft)' }}
+    >
+      {positive ? '▲' : '▼'} {formatPercent(Math.abs(roi))}
+    </span>
   );
 }
 
@@ -715,7 +772,7 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
           required
         />
         <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-800 dark:text-gray-200">{t('assets.createModal.assetClass')} <span className="text-red-500">*</span></label>
+          <label className="text-xs font-medium text-ink-muted">{t('assets.createModal.assetClass')} <span className="text-danger">*</span></label>
           <Select
             value={values.assetClass}
             onChange={(e) => handleChange('assetClass', e.target.value)}
@@ -725,7 +782,7 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
               { value: 'metal', label: 'Gold' },
             ]}
           />
-          {errors.assetClass && <p className="text-xs text-red-500">{errors.assetClass}</p>}
+          {errors.assetClass && <p className="text-xs text-danger">{errors.assetClass}</p>}
         </div>
         <AssetFormField
           label={t('assets.createModal.ticker')}
@@ -747,18 +804,18 @@ function AssetModal({ isOpen, title, submitLabel, initialValues, onClose, onSubm
           />
           {values.assetClass === 'stock' ? (
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              <label className="text-xs font-medium text-ink-muted">
                 {t('assets.createModal.unit')}
               </label>
-              <div className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-3 py-2 text-gray-700 dark:text-gray-300">
+              <div className="w-full rounded-md border border-line bg-app-elevated px-3.5 py-2 text-sm text-ink-muted">
                 Shares
               </div>
             </div>
           ) : values.assetClass === 'metal' ? (
             <div className="space-y-1">
-              <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+              <label className="text-xs font-medium text-ink-muted">
                 {t('assets.createModal.unit')}
-                <span className="text-red-500 ml-1">*</span>
+                <span className="ml-1 text-danger">*</span>
               </label>
               <Select
                 value={values.unit}
@@ -822,7 +879,7 @@ interface AssetFormFieldProps {
 function AssetFormField({ label, value, onChange, error, helper, type = 'text', multiline, placeholder, required }: AssetFormFieldProps) {
   const field = multiline ? (
     <textarea
-      className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 py-2"
+      className="w-full resize-none rounded-md border border-line-strong bg-app-surface px-3.5 py-2 text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent"
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
@@ -832,14 +889,14 @@ function AssetFormField({ label, value, onChange, error, helper, type = 'text', 
   );
   return (
     <div className="space-y-1">
-      <label className="text-sm font-medium text-gray-800 dark:text-gray-200">
+      <label className="text-xs font-medium text-ink-muted">
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
-        {!required && <span className="text-gray-400 dark:text-gray-500 ml-1 text-xs">(optional)</span>}
+        {required && <span className="ml-1 text-danger">*</span>}
+        {!required && <span className="ml-1 text-xs text-ink-faint">(optional)</span>}
       </label>
       {field}
-      {helper && <p className="text-xs text-gray-500">{helper}</p>}
-      {error && <p className="text-xs text-red-500">{error}</p>}
+      {helper && <p className="text-xs text-ink-muted">{helper}</p>}
+      {error && <p className="text-xs text-danger">{error}</p>}
     </div>
   );
 }
@@ -924,15 +981,16 @@ function inferSector(asset: Asset, valuation?: PortfolioRoiItemDto): string {
 interface SectorBreakdownCardProps extends AllocationCardProps {}
 
 function SectorBreakdownCard({ title, loading, data, emptyLabel }: SectorBreakdownCardProps) {
+  const theme = useChartTheme();
   if (loading) {
     return <CardSkeleton />;
   }
 
   if (data.length === 0) {
     return (
-      <Card className="p-6">
-        <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{title}</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{emptyLabel}</p>
+      <Card>
+        <h3 className="eyebrow mb-4">{title}</h3>
+        <p className="text-sm text-ink-muted">{emptyLabel}</p>
       </Card>
     );
   }
@@ -941,25 +999,25 @@ function SectorBreakdownCard({ title, loading, data, emptyLabel }: SectorBreakdo
   const sorted = [...data].sort((a, b) => b.value - a.value);
 
   return (
-    <Card className="p-6">
-      <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-4">{title}</h3>
+    <Card>
+      <h3 className="eyebrow mb-4">{title}</h3>
       <div className="space-y-4">
         {sorted.map((item, index) => {
           const percentage = total > 0 ? (item.value / total) * 100 : 0;
           return (
             <div key={item.name} className="space-y-1">
-              <div className="flex items-center justify-between text-sm font-medium text-gray-800 dark:text-gray-100">
-                <span>{item.name}</span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
+              <div className="flex items-center justify-between text-sm font-medium text-ink">
+                <span className="capitalize">{item.name}</span>
+                <span className="font-mono text-xs tnum text-ink-muted">
                   {formatCurrency(item.value)} · {formatPercent(percentage)}
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-gray-200 dark:bg-gray-800 overflow-hidden">
+              <div className="h-1.5 overflow-hidden rounded-full bg-app-elevated">
                 <div
-                  className="h-2 rounded-full transition-all"
+                  className="h-1.5 rounded-full transition-all"
                   style={{
                     width: `${percentage}%`,
-                    backgroundColor: ALLOCATION_COLORS[index % ALLOCATION_COLORS.length],
+                    backgroundColor: theme.colors[index % theme.colors.length],
                   }}
                 />
               </div>

@@ -1,4 +1,4 @@
-export type AccentColor = 'blue' | 'emerald' | 'purple' | 'orange' | 'rose';
+export type AccentColor = 'gold' | 'sage' | 'slate' | 'rose' | 'stone';
 export type ThemeMode = 'light' | 'dark' | 'system';
 
 export interface AppSettings {
@@ -12,7 +12,7 @@ let current: AppSettings = {
   language: 'en',
   currency: 'CAD',
   themeMode: 'system',
-  accentColor: 'blue',
+  accentColor: 'gold',
 };
 
 const listeners = new Set<(s: AppSettings) => void>();

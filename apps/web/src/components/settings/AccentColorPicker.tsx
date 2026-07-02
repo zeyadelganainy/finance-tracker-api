@@ -1,28 +1,34 @@
 import { useSettings } from '../../settings/SettingsProvider';
 import type { AccentColor } from '../../settings/registry';
 
-const SWATCHES: AccentColor[] = ['blue','emerald','purple','orange','rose'];
-const COLORS: Record<AccentColor, string> = {
-  blue: '#3b82f6',
-  emerald: '#10b981',
-  purple: '#8b5cf6',
-  orange: '#f59e0b',
-  rose: '#f43f5e',
-};
+const SWATCHES: { key: AccentColor; label: string; swatch: string }[] = [
+  // Gold renders the theme-aware default; show its dark-mode champagne tone in the chip.
+  { key: 'gold', label: 'Gold', swatch: '#c9a96e' },
+  { key: 'sage', label: 'Sage', swatch: '#5b8a72' },
+  { key: 'slate', label: 'Slate', swatch: '#6b7fa3' },
+  { key: 'rose', label: 'Rose', swatch: '#a67c8a' },
+  { key: 'stone', label: 'Stone', swatch: '#8b8569' },
+];
 
 export function AccentColorPicker() {
   const { settings, setAccentColor } = useSettings();
   return (
     <div className="flex items-center gap-3">
-      {SWATCHES.map((sw) => (
-        <button
-          key={sw}
-          aria-label={`Accent ${sw}`}
-          onClick={() => setAccentColor(sw)}
-          className={`w-8 h-8 rounded-full border-2 ${settings.accentColor===sw ? 'border-gray-900' : 'border-gray-300'}`}
-          style={{ backgroundColor: COLORS[sw] }}
-        />
-      ))}
+      {SWATCHES.map((sw) => {
+        const selected = settings.accentColor === sw.key;
+        return (
+          <button
+            key={sw.key}
+            aria-label={`Accent ${sw.label}`}
+            title={sw.label}
+            onClick={() => setAccentColor(sw.key)}
+            className={`relative h-8 w-8 rounded-full transition-transform duration-150 hover:scale-105 ${
+              selected ? 'ring-2 ring-offset-2 ring-ink ring-offset-app-surface' : 'ring-1 ring-line-strong'
+            }`}
+            style={{ backgroundColor: sw.swatch }}
+          />
+        );
+      })}
     </div>
   );
 }

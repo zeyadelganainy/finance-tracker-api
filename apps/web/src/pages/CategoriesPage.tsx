@@ -22,14 +22,14 @@ export function CategoriesPage() {
   const [deleting, setDeleting] = useState(false);
   
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <div>
         {/* Header */}
         <div className="mb-8">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('categories.title')}</h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              <h1 className="font-display text-3xl text-ink">{t('categories.title')}</h1>
+              <p className="mt-1 text-sm text-ink-muted">
                 {categories.length === 1
                   ? t('categories.count', { count: categories.length })
                   : t('categories.countPlural', { count: categories.length })}
@@ -48,7 +48,7 @@ export function CategoriesPage() {
             </Button>
           </div>
           {error && (
-            <div className="mt-4 p-3 rounded-lg border border-red-200 bg-red-50 text-red-700 text-sm">
+            <div className="mt-4 rounded-md border border-line bg-app-elevated p-3 text-sm text-danger">
               {error}
             </div>
           )}
@@ -62,22 +62,22 @@ export function CategoriesPage() {
             ))}
           </div>
         ) : categories.length > 0 ? (
-          <Card className="overflow-hidden">
+          <Card className="overflow-hidden p-0">
             <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50 dark:bg-gray-900">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('categories.name')}</th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('categories.type')}</th>
-                    <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wider">{t('categories.actions')}</th>
+              <table className="min-w-full">
+                <thead>
+                  <tr className="border-b border-line">
+                    <th className="px-6 py-3 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">{t('categories.name')}</th>
+                    <th className="px-6 py-3 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">{t('categories.type')}</th>
+                    <th className="px-6 py-3 text-right text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">{t('categories.actions')}</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-800">
+                <tbody className="divide-y divide-line">
                   {categories.map((category) => (
-                    <tr key={category.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                      <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-gray-100">{category.name}</td>
-                      <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300 capitalize">{category.type || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-right">
+                    <tr key={category.id} className="transition-colors hover:bg-app-elevated">
+                      <td className="px-6 py-4 text-sm font-medium text-ink">{category.name}</td>
+                      <td className="px-6 py-4 text-sm capitalize text-ink-muted">{category.type || '—'}</td>
+                      <td className="px-6 py-4 text-right text-sm">
                         <div className="flex items-center justify-end gap-2">
                           <Button variant="ghost" size="sm" onClick={() => {
                             setShowCreateModal(false);
@@ -89,7 +89,7 @@ export function CategoriesPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="text-red-600 hover:text-red-700"
+                            className="text-danger hover:text-danger"
                             onClick={() => {
                               setShowCreateModal(false);
                               setEditingCategory(null);

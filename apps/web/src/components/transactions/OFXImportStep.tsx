@@ -161,10 +161,10 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
         />
         <div
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center hover:border-gray-400 transition-colors cursor-pointer"
+          className="cursor-pointer rounded-md border-2 border-dashed border-line-strong p-12 text-center transition-colors hover:border-accent"
         >
           <svg
-            className="mx-auto h-12 w-12 text-gray-400"
+            className="mx-auto h-12 w-12 text-ink-faint"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -176,8 +176,8 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
               d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
             />
           </svg>
-          <p className="mt-2 text-sm font-medium text-gray-900">Click to upload OFX/QFX file</p>
-          <p className="mt-1 text-xs text-gray-500">Supported formats: .ofx, .qfx (max 10MB)</p>
+          <p className="mt-2 text-sm font-medium text-ink">Click to upload OFX/QFX file</p>
+          <p className="mt-1 text-xs text-ink-muted">Supported formats: .ofx, .qfx (max 10MB)</p>
         </div>
       </div>
     );
@@ -186,9 +186,9 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
   if (parsing) {
     return (
       <div className="space-y-6">
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-sm text-gray-600">Parsing OFX file...</p>
+        <div className="py-8 text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-accent"></div>
+          <p className="mt-2 text-sm text-ink-muted">Parsing OFX file...</p>
         </div>
       </div>
     );
@@ -197,30 +197,30 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
   if (importSummary) {
     return (
       <div className="space-y-4">
-        <div className="rounded-lg border border-gray-200 bg-gray-50 p-6">
-          <h4 className="text-lg font-semibold text-gray-900 mb-4">Import Complete</h4>
+        <div className="rounded-md border border-line bg-app-elevated p-6">
+          <h4 className="mb-4 font-display text-lg text-ink">Import Complete</h4>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-2xl font-bold text-green-600">{importSummary.imported}</p>
-              <p className="text-sm text-gray-600">Imported</p>
+              <p className="font-mono text-2xl font-semibold text-success tnum">{importSummary.imported}</p>
+              <p className="text-sm text-ink-muted">Imported</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-gray-600">{importSummary.skipped}</p>
-              <p className="text-sm text-gray-600">Skipped (Duplicates)</p>
+              <p className="font-mono text-2xl font-semibold text-ink-muted tnum">{importSummary.skipped}</p>
+              <p className="text-sm text-ink-muted">Skipped (Duplicates)</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-red-600">{importSummary.failed}</p>
-              <p className="text-sm text-gray-600">Failed</p>
+              <p className="font-mono text-2xl font-semibold text-danger tnum">{importSummary.failed}</p>
+              <p className="text-sm text-ink-muted">Failed</p>
             </div>
           </div>
         </div>
 
         {importSummary.errors && importSummary.errors.length > 0 && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4">
-            <h5 className="text-sm font-semibold text-red-900 mb-2">Import Errors</h5>
-            <div className="max-h-40 overflow-y-auto space-y-1">
+          <div className="rounded-md border border-line bg-app-elevated p-4">
+            <h5 className="mb-2 text-sm font-semibold text-danger">Import Errors</h5>
+            <div className="max-h-40 space-y-1 overflow-y-auto scrollbar-subtle">
               {importSummary.errors.map((error, idx) => (
-                <p key={idx} className="text-xs text-red-700">
+                <p key={idx} className="text-xs text-danger">
                   Row {error.row}: {error.message}
                 </p>
               ))}
@@ -228,7 +228,7 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
           </div>
         )}
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
+        <div className="flex justify-end gap-3 border-t border-line pt-4">
           <Button onClick={onCancel}>Done</Button>
         </div>
       </div>
@@ -241,8 +241,8 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-900">{file.name}</p>
-          <p className="text-xs text-gray-500">{parsedRows.length} transactions</p>
+          <p className="text-sm font-medium text-ink">{file.name}</p>
+          <p className="text-xs text-ink-muted">{parsedRows.length} transactions</p>
         </div>
         <Button
           variant="ghost"
@@ -261,49 +261,49 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
       </div>
 
       {/* Preview Table */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider w-12">
+      <div className="overflow-hidden rounded-md border border-line">
+        <table className="min-w-full">
+          <thead>
+            <tr className="border-b border-line">
+              <th className="w-12 px-4 py-3 text-left">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                  className="h-4 w-4 rounded border-line-strong accent-[var(--accent-color)]"
                   checked={selectedRows.size === parsedRows.length && parsedRows.length > 0}
                   onChange={handleSelectAll}
                 />
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                 Date
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                 Description
               </th>
-              <th className="px-6 py-3 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-3 text-right text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                 Amount
               </th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-[0.6875rem] font-semibold uppercase tracking-[0.12em] text-ink-muted">
                 Payee
               </th>
             </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="divide-y divide-line">
             {parsedRows.map((row, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
+              <tr key={idx} className="transition-colors hover:bg-app-elevated">
                 <td className="px-4 py-3">
                   <input
                     type="checkbox"
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                    className="h-4 w-4 rounded border-line-strong accent-[var(--accent-color)]"
                     checked={selectedRows.has(idx)}
                     onChange={() => handleToggleRow(idx)}
                   />
                 </td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm text-gray-900">{row.date}</td>
-                <td className="px-6 py-3 text-sm text-gray-900">{row.description || '-'}</td>
-                <td className="px-6 py-3 whitespace-nowrap text-sm font-semibold text-right text-red-600">
+                <td className="whitespace-nowrap px-6 py-3 font-mono text-sm text-ink tnum">{row.date}</td>
+                <td className="px-6 py-3 text-sm text-ink">{row.description || '-'}</td>
+                <td className="whitespace-nowrap px-6 py-3 text-right font-mono text-sm font-semibold text-danger tnum">
                   ${row.amount.toFixed(2)}
                 </td>
-                <td className="px-6 py-3 text-sm text-gray-600">{row.payee || '-'}</td>
+                <td className="px-6 py-3 text-sm text-ink-muted">{row.payee || '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -312,15 +312,15 @@ export function OFXImportStep({ accountId, onSuccess, onCancel }: OFXImportStepP
 
       {selectedRows.size > 0 && (
         <Button
-          variant="outline"
+          variant="ghost"
           onClick={handleRemoveSelected}
-          className="border-red-200 text-red-600 hover:bg-red-50"
+          className="text-danger hover:bg-app-elevated"
         >
           Remove Selected ({selectedRows.size})
         </Button>
       )}
 
-      <div className="flex justify-end gap-3 pt-4 border-t">
+      <div className="flex justify-end gap-3 border-t border-line pt-4">
         <Button variant="outline" onClick={onCancel} disabled={importing}>
           Cancel
         </Button>

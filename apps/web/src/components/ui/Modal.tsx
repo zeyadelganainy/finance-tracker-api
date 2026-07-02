@@ -46,36 +46,36 @@ export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }:
       <div className="flex min-h-screen items-center justify-center p-4">
         {/* Backdrop */}
         <div
-          className="fixed inset-0 bg-black/60 transition-opacity"
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
           onClick={onClose}
         />
-        
+
         {/* Modal */}
         <div
-          className={`relative bg-white dark:bg-gray-900 rounded-xl shadow-xl border border-gray-200 dark:border-gray-800 ${sizes[size]} w-full max-h-[90vh] flex flex-col`}
+          className={`relative ${sizes[size]} flex max-h-[90vh] w-full flex-col rounded-card border border-line bg-app-surface shadow-pop animate-rise-in`}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between bg-gray-50/60 dark:bg-gray-900/70">
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-50">{title}</h2>
+          <div className="flex items-center justify-between border-b border-line px-6 py-4">
+            <h2 className="font-display text-lg text-ink">{title}</h2>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition-colors"
+              className="text-ink-faint transition-colors hover:text-ink"
             >
-              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
-          
+
           {/* Body */}
-          <div className="px-6 py-4 overflow-y-auto flex-1 text-gray-900 dark:text-gray-100">
+          <div className="flex-1 overflow-y-auto px-6 py-4 text-ink scrollbar-subtle">
             {children}
           </div>
-          
+
           {/* Footer */}
           {footer && (
-            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 bg-gray-50/60 dark:bg-gray-900/70 flex items-center justify-end gap-3">
+            <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
               {footer}
             </div>
           )}
@@ -125,17 +125,17 @@ export function ConfirmModal({
         <>
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            className="rounded-md px-4 py-2 text-sm font-medium text-ink-muted transition-colors hover:bg-app-elevated hover:text-ink"
             disabled={isProcessing}
           >
             {cancelText}
           </button>
           <button
             onClick={handleConfirm}
-            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+            className={`rounded-md px-4 py-2 text-sm font-semibold transition-colors ${
               variant === 'danger'
-                ? 'bg-red-600 hover:bg-red-700 text-white'
-                : 'bg-[var(--accent-color)] hover:bg-[var(--accent-color-hover)] text-white'
+                ? 'bg-danger text-white hover:opacity-90'
+                : 'bg-accent text-accent-contrast hover:bg-accent-hover'
             }`}
             disabled={isProcessing}
           >
@@ -144,7 +144,7 @@ export function ConfirmModal({
         </>
       }
     >
-      <p className="text-gray-600">{message}</p>
+      <p className="text-ink-muted">{message}</p>
     </Modal>
   );
 }

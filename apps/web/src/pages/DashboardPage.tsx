@@ -1,44 +1,59 @@
 import { useEffect, useState } from 'react';
 import { format, parse, subMonths } from 'date-fns';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import {
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { apiFetch } from '../lib/apiClient';
 import { formatCurrency } from '../lib/utils';
+import { useChartTheme, CHART_DEFAULTS, formatCompactCurrency } from '../lib/chartTheme';
+import { useCountUp } from '../hooks/useCountUp';
 import { NetWorthHistoryResponse, MonthlySummary, NetWorthDataPoint } from '../types/api';
-import { StatCard, Card } from '../components/ui/Card';
+import { Card } from '../components/ui/Card';
 import { Select } from '../components/ui/Select';
-import { Button } from '../components/ui/Button';
 import { CardSkeleton } from '../components/ui/Skeleton';
 import { useAIContext } from '../hooks/useAI';
 import { useAuth } from '../auth/AuthProvider';
 import { EmptyState } from '../components/ui/EmptyState';
-import { env } from '../lib/env';
 
-const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-
-// Custom tooltip component for Expense Breakdown PieChart
-interface ExpenseTooltipProps {
-  active?: boolean;
-  payload?: any[];
-  expenseTotalExpense: number;
+interface TooltipPayloadItem {
+  name?: string;
+  value?: number | string;
+  payload?: Record<string, unknown>;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-function ExpenseTooltip({ active, payload, expenseTotalExpense }: ExpenseTooltipProps) {
-  if (!active || !payload || payload.length === 0) {
-    return null;
-  }
-
-  const data = payload[0];
-  const categoryName = data.name;
-  const amount = Number(data.value);
-  const percent = ((amount / expenseTotalExpense) * 100).toFixed(1);
-
+function ChartTooltip({
+  active,
+  rows,
+}: {
+  active?: boolean;
+  rows: { label: string; value: string; sub?: string }[];
+}) {
+  const theme = useChartTheme();
+  if (!active) return null;
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-lg p-3">
-      <div className="text-sm font-semibold text-gray-900">{categoryName}</div>
-      <div className="text-sm font-semibold text-gray-900 mt-1">{formatCurrency(amount)}</div>
-      <div className="text-xs text-gray-600 mt-1">{percent}% of total</div>
+    <div
+      className="rounded-md px-3 py-2 text-sm shadow-pop"
+      style={{ background: theme.tooltip.bg, border: `1px solid ${theme.tooltip.border}`, color: theme.tooltip.text }}
+    >
+      {rows.map((r, i) => (
+        <div key={i} className={i > 0 ? 'mt-1' : ''}>
+          <div className="text-[0.6875rem] uppercase tracking-wide" style={{ color: theme.axis }}>
+            {r.label}
+          </div>
+          <div className="font-mono font-semibold tnum">{r.value}</div>
+          {r.sub && <div className="text-xs" style={{ color: theme.axis }}>{r.sub}</div>}
+        </div>
+      ))}
     </div>
   );
 }
@@ -46,6 +61,7 @@ function ExpenseTooltip({ active, payload, expenseTotalExpense }: ExpenseTooltip
 export function DashboardPage() {
   const { t } = useTranslation();
   const { user, accessToken, isLoading: authLoading } = useAuth();
+  const theme = useChartTheme();
   const currentMonth = format(new Date(), 'yyyy-MM');
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
   const [netWorthRange, setNetWorthRange] = useState<'1w' | '1m' | '3m' | '6m'>('1m');
@@ -53,30 +69,20 @@ export function DashboardPage() {
   const [monthlySummary, setMonthlySummary] = useState<MonthlySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
-  // Dev-only: smoke test state
-  const [smokeTestResult, setSmokeTestResult] = useState<string | null>(null);
-  const [smokeTestLoading, setSmokeTestLoading] = useState(false);
-  
-  // Generate last 6 months for net worth chart
+  const [hoveredCategory, setHoveredCategory] = useState<number | null>(null);
+
   const sixMonthsAgo = format(subMonths(new Date(), 6), 'yyyy-MM-dd');
   const today = format(new Date(), 'yyyy-MM-dd');
-  
-  // Fetch AI context (used for generating insights later) only when authenticated
+
   useAIContext(!!user);
 
-  // Fetch dashboard data and reset on auth/user change
   useEffect(() => {
-    // Reset state when user changes or auth is still loading
     setNetWorthData(null);
     setMonthlySummary(null);
     setError(null);
     setLoading(true);
 
-    if (authLoading) {
-      return;
-    }
-
+    if (authLoading) return;
     if (!user || !accessToken) {
       setLoading(false);
       return;
@@ -90,14 +96,12 @@ export function DashboardPage() {
           apiFetch<NetWorthHistoryResponse>(`/networth/history?from=${sixMonthsAgo}&to=${today}`, { signal: controller.signal }),
           apiFetch<MonthlySummary>(`/summary/monthly?month=${selectedMonth}`, { signal: controller.signal }),
         ]);
-
         setNetWorthData(networth);
         setMonthlySummary(summary);
         setError(null);
       } catch (err) {
         if (controller.signal.aborted) return;
         const message = err instanceof Error ? err.message : 'Failed to load dashboard';
-        // If backend returns 404 for empty datasets, treat as empty state
         if (message.startsWith('404')) {
           setNetWorthData({ from: sixMonthsAgo, to: today, interval: 'daily', dataPoints: [] });
           setMonthlySummary({ month: selectedMonth, totalIncome: 0, totalExpenses: 0, net: 0, expenseBreakdown: [] });
@@ -106,491 +110,344 @@ export function DashboardPage() {
           setError(message);
         }
       } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
+        if (!controller.signal.aborted) setLoading(false);
       }
     };
 
     fetchDashboard();
-
     return () => controller.abort();
   }, [user?.id, accessToken, selectedMonth, authLoading, sixMonthsAgo, today]);
-  
-  // Generate month options (last 12 months)
+
   const monthOptions = Array.from({ length: 12 }, (_, i) => {
     const date = subMonths(new Date(), i);
-    const value = format(date, 'yyyy-MM');
-    const label = format(date, 'MMMM yyyy');
-    return { value, label };
+    return { value: format(date, 'yyyy-MM'), label: format(date, 'MMMM yyyy') };
   });
-  
-  // Prepare chart data
+
   const netWorthPoints = netWorthData?.dataPoints ?? [];
-
-  // Map range to days
   const rangeDays = { '1w': 7, '1m': 30, '3m': 90, '6m': 180 };
-  const selectedDays = rangeDays[netWorthRange];
-  const rangeStartDate = subMonths(new Date(), selectedDays / 30);
-
-  // Filter net worth points to selected range
-  const filteredNetWorthPoints = netWorthPoints.filter((point) => {
-    return new Date(point.date) >= rangeStartDate;
-  });
+  const rangeStartDate = subMonths(new Date(), rangeDays[netWorthRange] / 30);
+  const filteredNetWorthPoints = netWorthPoints.filter((point) => new Date(point.date) >= rangeStartDate);
 
   const netWorthChartData = filteredNetWorthPoints.map((point: NetWorthDataPoint) => ({
     date: format(new Date(point.date), 'MMM dd'),
     netWorth: point.netWorth,
   }));
-  
+
   const { chartData: expenseChartData, totalExpense: expenseTotalExpense } = (() => {
     const breakdown = monthlySummary?.expenseBreakdown || [];
-    if (breakdown.length === 0) return { chartData: [], totalExpense: 0 };
+    if (breakdown.length === 0) return { chartData: [] as { name: string; value: number; share: number }[], totalExpense: 0 };
 
-    // Filter out zero values and compute absolute values
     const validCategories = breakdown
-      .filter(item => Math.abs(item.total) > 0)
-      .map(item => ({
-        name: item.categoryName,
-        value: Math.abs(item.total),
-      }));
-
+      .filter((item) => Math.abs(item.total) > 0)
+      .map((item) => ({ name: item.categoryName, value: Math.abs(item.total) }));
     if (validCategories.length === 0) return { chartData: [], totalExpense: 0 };
 
     const totalExpense = validCategories.reduce((sum, item) => sum + item.value, 0);
     if (totalExpense === 0) return { chartData: [], totalExpense: 0 };
 
-    // Compute shares and sort by value descending
-    const categorized = validCategories.map(item => ({
-      name: item.name,
-      value: item.value,
-      share: item.value / totalExpense,
-    }));
+    const categorized = validCategories
+      .map((item) => ({ name: item.name, value: item.value, share: item.value / totalExpense }))
+      .sort((a, b) => b.value - a.value);
 
-    categorized.sort((a, b) => b.value - a.value);
-
-    // Keep only top 7 categories; rest go to "Other"
-    const maxCategories = 7;
+    const maxCategories = 6;
     const topCategories = categorized.slice(0, maxCategories);
-    const remainingCategories = categorized.slice(maxCategories);
-
-    // Combine remaining categories and those < 1% into "Other"
-    const smallCategories = topCategories.filter(cat => cat.share < 0.01);
-    const finalMajorCategories = topCategories.filter(cat => cat.share >= 0.01);
-
-    // Add "Other" if there are categories to merge
-    const otherCategories = [...smallCategories, ...remainingCategories];
-    if (otherCategories.length > 0) {
-      const otherValue = otherCategories.reduce((sum, cat) => sum + cat.value, 0);
-      finalMajorCategories.push({
-        name: 'Other',
-        value: otherValue,
-        share: otherValue / totalExpense,
-      });
+    const remaining = categorized.slice(maxCategories);
+    const small = topCategories.filter((c) => c.share < 0.01);
+    const major = topCategories.filter((c) => c.share >= 0.01);
+    const other = [...small, ...remaining];
+    if (other.length > 0) {
+      const otherValue = other.reduce((s, c) => s + c.value, 0);
+      major.push({ name: 'Other', value: otherValue, share: otherValue / totalExpense });
     }
-
-    const chartData = finalMajorCategories.map(({ name, value, share }) => ({ name, value, share }));
-    return { chartData, totalExpense };
+    return { chartData: major, totalExpense };
   })();
 
-  // Parse selected month correctly for display
   const selectedMonthDate = parse(selectedMonth, 'yyyy-MM', new Date());
-  
-  const latestNetWorth = filteredNetWorthPoints.length > 0 
-    ? filteredNetWorthPoints[filteredNetWorthPoints.length - 1].netWorth 
-    : 0;
-  const earliestNetWorth = filteredNetWorthPoints.length > 0 
-    ? filteredNetWorthPoints[0].netWorth 
-    : 0;
-  const netWorthChange = latestNetWorth - earliestNetWorth;
-  
-  const netWorthChangePercent = filteredNetWorthPoints.length > 1 && earliestNetWorth !== 0
-    ? ((netWorthChange / Math.abs(earliestNetWorth)) * 100).toFixed(1)
-    : null;
 
-  const rangeLabels = {
-    '1w': t('dashboard.netWorthRanges.1w'),
-    '1m': t('dashboard.netWorthRanges.1m'),
-    '3m': t('dashboard.netWorthRanges.3m'),
-    '6m': t('dashboard.netWorthRanges.6m'),
-  };
+  const latestNetWorth = filteredNetWorthPoints.length > 0 ? filteredNetWorthPoints[filteredNetWorthPoints.length - 1].netWorth : 0;
+  const earliestNetWorth = filteredNetWorthPoints.length > 0 ? filteredNetWorthPoints[0].netWorth : 0;
+  const netWorthChange = latestNetWorth - earliestNetWorth;
+  const netWorthChangePercent =
+    filteredNetWorthPoints.length > 1 && earliestNetWorth !== 0
+      ? ((netWorthChange / Math.abs(earliestNetWorth)) * 100).toFixed(1)
+      : null;
+
   const rangeComparisons = {
     '1w': t('dashboard.netWorthComparisons.1w'),
     '1m': t('dashboard.netWorthComparisons.1m'),
     '3m': t('dashboard.netWorthComparisons.3m'),
     '6m': t('dashboard.netWorthComparisons.6m'),
   };
-  
-  // Determine if we have enough history for meaningful comparison
-  const hasEnoughHistoryForComparison = filteredNetWorthPoints.length > 1;
-  
-  const netWorthTrendLabel = hasEnoughHistoryForComparison
-    ? `${netWorthChangePercent}% ${rangeComparisons[netWorthRange]}`
-    : '—';
 
-  const hasSummaryData = !!monthlySummary && (
-    monthlySummary.totalIncome !== 0 ||
-    monthlySummary.totalExpenses !== 0 ||
-    monthlySummary.net !== 0 ||
-    (monthlySummary.expenseBreakdown?.length ?? 0) > 0
-  );
+  const hasEnoughHistory = filteredNetWorthPoints.length > 1;
+  const netWorthUp = netWorthChange >= 0;
 
+  const hasSummaryData =
+    !!monthlySummary &&
+    (monthlySummary.totalIncome !== 0 ||
+      monthlySummary.totalExpenses !== 0 ||
+      monthlySummary.net !== 0 ||
+      (monthlySummary.expenseBreakdown?.length ?? 0) > 0);
   const hasData = netWorthPoints.length > 0 || hasSummaryData;
 
-  // Dev-only: Force a network request to test API connectivity
-  const runSmokeTest = async () => {
-    const tickers = 'XAU,AAPL';
-    const endpoint = `/market/quotes?tickers=${encodeURIComponent(tickers)}&currency=CAD`;
-    setSmokeTestLoading(true);
-    setSmokeTestResult(null);
-    
-    try {
-      // eslint-disable-next-line no-console
-      console.log('[Dashboard] Smoke test: Calling', endpoint);
-      
-      const response = await apiFetch<any>(endpoint);
-      
-      // eslint-disable-next-line no-console
-      console.log('[Dashboard] Smoke test SUCCESS:', response);
-      
-      setSmokeTestResult(JSON.stringify(response, null, 2));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      console.error('[Dashboard] Smoke test FAILED:', message, err);
-      setSmokeTestResult(`ERROR: ${message}`);
-    } finally {
-      setSmokeTestLoading(false);
-    }
-  };
+  const animatedNetWorth = useCountUp(latestNetWorth);
+
+  const netMonth = monthlySummary?.net ?? 0;
+  const activeDonut = hoveredCategory !== null ? expenseChartData[hoveredCategory] : null;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header with timestamp */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-50">{t('dashboard.title')}</h1>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
-                {t('dashboard.subtitle')}
-              </p>
-            </div>
-            <div className="text-xs text-gray-400 dark:text-gray-500">
-              {t('dashboard.lastUpdated')}: {format(new Date(), 'MMM d, yyyy h:mm a')}
-            </div>
-          </div>
+    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Net worth hero */}
+      <div className="mb-8 animate-rise-in">
+        <p className="eyebrow">{t('dashboard.netWorth')}</p>
+        <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
+          <h1 className="font-display text-4xl tracking-tightest text-ink tnum md:text-5xl">
+            {formatCurrency(animatedNetWorth)}
+          </h1>
+          {hasEnoughHistory && netWorthChangePercent && (
+            <span
+              className={`mb-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium tnum ${
+                netWorthUp ? 'text-success' : 'text-danger'
+              }`}
+              style={{ background: 'var(--accent-soft)' }}
+            >
+              {netWorthUp ? '▲' : '▼'} {Math.abs(parseFloat(netWorthChangePercent))}% {rangeComparisons[netWorthRange]}
+            </span>
+          )}
         </div>
+        <p className="mt-1 text-sm text-ink-muted">{t('dashboard.subtitle')}</p>
+      </div>
 
-        {/* Dev-only: API Smoke Test */}
-        {import.meta.env.DEV && (
-          <Card className="mb-6 bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800">
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="text-sm font-semibold text-yellow-900 dark:text-yellow-100">
-                    🔧 Dev-Only: API Connectivity Test
-                  </h3>
-                  <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
-                    Test endpoint: GET /market/quotes?tickers=XAU,AAPL&currency=CAD
-                  </p>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
-                    Base URL: {env.apiBaseUrl}
-                  </p>
+      {loading ? (
+        <>
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))}
+          </div>
+          <CardSkeleton />
+        </>
+      ) : (
+        <>
+          {error && (
+            <div className="mb-6 rounded-md border border-line bg-app-surface px-4 py-3 text-sm text-danger">{error}</div>
+          )}
+
+          {!error && !hasData && (
+            <Card className="mb-8">
+              <EmptyState title={t('dashboard.noDataTitle')} description={t('dashboard.noDataDescription')} />
+            </Card>
+          )}
+
+          {/* Summary stat cards */}
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <SummaryTile
+              label={t('dashboard.monthlyIncome')}
+              value={formatCurrency(monthlySummary?.totalIncome || 0)}
+              tone="success"
+            />
+            <SummaryTile
+              label={t('dashboard.monthlyExpenses')}
+              value={formatCurrency(Math.abs(monthlySummary?.totalExpenses || 0))}
+              tone="danger"
+            />
+            <SummaryTile
+              label={t('dashboard.netThisMonth')}
+              value={formatCurrency(netMonth)}
+              tone={netMonth >= 0 ? 'success' : 'danger'}
+            />
+          </div>
+
+          {/* Month selector */}
+          <div className="mb-6 max-w-xs">
+            <Select
+              label={t('dashboard.selectMonth')}
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              options={monthOptions}
+            />
+          </div>
+
+          {/* Charts */}
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+            {/* Net worth area chart — wider */}
+            <Card
+              className="lg:col-span-3"
+              title={t('dashboard.netWorthOverTime')}
+              actions={
+                <div className="flex gap-1 rounded-md bg-app-elevated p-0.5">
+                  {(['1w', '1m', '3m', '6m'] as const).map((range) => (
+                    <button
+                      key={range}
+                      onClick={() => setNetWorthRange(range)}
+                      className={`rounded px-2.5 py-1 text-xs font-medium uppercase tracking-wide transition-colors ${
+                        netWorthRange === range ? 'bg-app-surface text-accent shadow-card' : 'text-ink-muted hover:text-ink'
+                      }`}
+                    >
+                      {range}
+                    </button>
+                  ))}
                 </div>
-                <Button
-                  onClick={runSmokeTest}
-                  disabled={smokeTestLoading}
-                  variant="outline"
-                  size="sm"
-                >
-                  {smokeTestLoading ? 'Testing...' : 'Fetch XAU + AAPL'}
-                </Button>
+              }
+            >
+              <div className="h-72">
+                {netWorthChartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={netWorthChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="nwFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor={theme.accent} stopOpacity={0.2} />
+                          <stop offset="100%" stopColor={theme.accent} stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid vertical={false} stroke={theme.grid} />
+                      <XAxis
+                        dataKey="date"
+                        tickLine={false}
+                        axisLine={false}
+                        tick={{ fill: theme.axis, ...CHART_DEFAULTS.axisTick }}
+                        minTickGap={28}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        width={56}
+                        tick={{ fill: theme.axis, ...CHART_DEFAULTS.axisTick }}
+                        tickFormatter={(v) => formatCompactCurrency(Number(v))}
+                      />
+                      <Tooltip
+                        cursor={{ stroke: theme.axis, strokeDasharray: '3 3' }}
+                        content={({ active, payload }) => {
+                          const p = payload as TooltipPayloadItem[] | undefined;
+                          return (
+                            <ChartTooltip
+                              active={active}
+                              rows={[{ label: t('dashboard.netWorth'), value: formatCurrency(Number(p?.[0]?.value ?? 0)) }]}
+                            />
+                          );
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="netWorth"
+                        stroke={theme.accent}
+                        strokeWidth={1.5}
+                        fill="url(#nwFill)"
+                        dot={false}
+                        activeDot={{ r: 3, fill: theme.accent, stroke: theme.tooltip.bg, strokeWidth: 2 }}
+                        isAnimationActive={CHART_DEFAULTS.animate}
+                        animationDuration={CHART_DEFAULTS.animationDuration}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex h-full items-center justify-center text-sm text-ink-faint">
+                    {t('dashboard.noNetWorthData')}
+                  </div>
+                )}
               </div>
-              
-              {smokeTestResult && (
-                <div className="mt-3">
-                  <div className="text-xs font-mono bg-white dark:bg-gray-900 p-3 rounded border border-yellow-300 dark:border-yellow-700 overflow-auto max-h-64">
-                    <pre className="whitespace-pre-wrap text-gray-900 dark:text-gray-100">
-                      {smokeTestResult}
-                    </pre>
-                  </div>
-                  <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-2">
-                    ✓ Check browser Network tab for the request
-                  </p>
-                </div>
-              )}
-            </div>
-          </Card>
-        )}
-        
-        {loading ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <CardSkeleton key={i} />
-              ))}
-            </div>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <CardSkeleton />
-              <CardSkeleton />
-            </div>
-          </>
-        ) : (
-          <>
-            {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-3 rounded-lg">
-                {error}
-              </div>
-            )}
+            </Card>
 
-            {!error && !hasData && (
-              <Card className="mb-8">
-                <EmptyState
-                  title={t('dashboard.noDataTitle')}
-                  description={t('dashboard.noDataDescription')}
-                />
-              </Card>
-            )}
-
-            {/* Stats Cards with improved styling */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
-              <StatCard
-                label={t('dashboard.netWorth')}
-                value={formatCurrency(latestNetWorth)}
-                trend={{
-                  value: hasEnoughHistoryForComparison && netWorthChangePercent ? parseFloat(netWorthChangePercent) : 0,
-                  positive: hasEnoughHistoryForComparison && netWorthChangePercent ? netWorthChange >= 0 : false,
-                  label: netWorthTrendLabel,
-                }}
-                icon={
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                }
-                valueColor="text-blue-600"
-              />
-              <StatCard
-                label={t('dashboard.monthlyIncome')}
-                value={formatCurrency(monthlySummary?.totalIncome || 0)}
-                icon={
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                  </svg>
-                }
-                valueColor="text-green-600"
-              />
-              <StatCard
-                label={t('dashboard.monthlyExpenses')}
-                value={formatCurrency(Math.abs(monthlySummary?.totalExpenses || 0))}
-                icon={
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 13l-5 5m0 0l-5-5m5 5V6" />
-                  </svg>
-                }
-                valueColor="text-red-600"
-              />
-              <StatCard
-                label={t('dashboard.netThisMonth')}
-                value={formatCurrency(monthlySummary?.net || 0)}
-                icon={
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                }
-                valueColor={monthlySummary?.net && monthlySummary.net >= 0 ? 'text-green-600' : 'text-red-600'}
-              />
-            </div>
-            
-            {/* Month Selector */}
-            <div className="mb-6 max-w-xs">
-              <Select
-                label={t('dashboard.selectMonth')}
-                value={selectedMonth}
-                onChange={(e) => setSelectedMonth(e.target.value)}
-                options={monthOptions}
-              />
-            </div>
-            
-            {/* Charts Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-              {/* Net Worth Over Time */}
-              <Card title={t('dashboard.netWorthOverTime')} description={rangeLabels[netWorthRange]}>
-                <div className="space-y-4">
-                  {/* Range Selector */}
-                  <div className="flex gap-2">
-                    {(['1w', '1m', '3m', '6m'] as const).map((range) => (
-                      <button
-                        key={range}
-                        onClick={() => setNetWorthRange(range)}
-                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                          netWorthRange === range
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                        }`}
-                      >
-                        {range.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Chart */}
-                  <div className="h-80">
-                    {netWorthChartData.length > 0 ? (
-                      <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={netWorthChartData} margin={{ top: 5, right: 5, left: 5, bottom: 5 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                          <XAxis 
-                            dataKey="date" 
-                            stroke="#6b7280" 
-                            fontSize={12}
-                            tick={{ fill: '#6b7280' }}
-                          />
-                          <YAxis 
-                            stroke="#6b7280" 
-                            fontSize={12}
-                            tick={{ fill: '#6b7280' }}
-                            tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                          />
-                          <Tooltip
-                            contentStyle={{
-                              backgroundColor: '#fff',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '8px',
-                              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-                            }}
-                            formatter={(value: any) => [formatCurrency(Number(value)), 'Net Worth']}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="netWorth"
-                            stroke="#3b82f6"
-                            strokeWidth={3}
-                            dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                            activeDot={{ r: 6, strokeWidth: 2 }}
-                          />
-                        </LineChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                        <svg className="w-16 h-16 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <p className="text-sm">{t('dashboard.noNetWorthData')}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </Card>
-              
-              {/* Expense Breakdown */}
-              <Card title={t('dashboard.expenseBreakdown')} description={t('dashboard.expenseBreakdownFor', { month: format(selectedMonthDate, 'MMMM yyyy') })}>
-                <div className="h-80">
-                  {expenseChartData.length > 0 ? (
+            {/* Expense donut — narrower */}
+            <Card
+              className="lg:col-span-2"
+              title={t('dashboard.expenseBreakdown')}
+              description={format(selectedMonthDate, 'MMMM yyyy')}
+            >
+              {expenseChartData.length > 0 ? (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative h-52 w-full">
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
                           data={expenseChartData}
                           cx="50%"
                           cy="50%"
-                          labelLine={false}
-                          label={({ name, share }: any) => {
-                            // Only show label if category is >= 5% of total
-                            if (share >= 0.05) {
-                              const displayName = name.length > 12 ? name.substring(0, 12) + '...' : name;
-                              return `${displayName} (${(share * 100).toFixed(0)}%)`;
-                            }
-                            return '';
-                          }}
-                          outerRadius={100}
-                          fill="#8884d8"
+                          innerRadius="62%"
+                          outerRadius="88%"
+                          paddingAngle={2}
                           dataKey="value"
+                          stroke="none"
+                          onMouseEnter={(_, index) => setHoveredCategory(index)}
+                          onMouseLeave={() => setHoveredCategory(null)}
+                          isAnimationActive={CHART_DEFAULTS.animate}
                         >
-                          {expenseChartData.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          {expenseChartData.map((entry, index) => (
+                            <Cell
+                              key={`cell-${index}`}
+                              fill={entry.name === 'Other' ? theme.neutral : theme.colors[index % theme.colors.length]}
+                              opacity={hoveredCategory === null || hoveredCategory === index ? 1 : 0.35}
+                            />
                           ))}
                         </Pie>
-                        <Tooltip
-                          content={<ExpenseTooltip expenseTotalExpense={expenseTotalExpense} />}
-                        />
-                        <Legend 
-                          wrapperStyle={{ fontSize: '12px' }}
-                          iconType="circle"
-                          formatter={(value: string) => {
-                            // Truncate long category names in legend with ellipsis
-                            return value.length > 15 ? value.substring(0, 15) + '...' : value;
-                          }}
-                        />
                       </PieChart>
                     </ResponsiveContainer>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                      <svg className="w-16 h-16 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" />
-                      </svg>
-                      <p className="text-sm">{t('dashboard.noExpenses')}</p>
-                    </div>
-                  )}
-                </div>
-              </Card>
-            </div>
-            
-            {/* Top Spending Category */}
-            {monthlySummary && monthlySummary.expenseBreakdown.length > 0 && (
-              <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200 dark:from-gray-800 dark:to-gray-900 dark:border-gray-700 mt-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-2">
-                      <svg className="w-5 h-5 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                      </svg>
-                      {t('dashboard.topSpendingCategory')}
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                      {t('dashboard.topSpendingDescription')}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-gray-900 dark:text-gray-50">
-                      {monthlySummary.expenseBreakdown[0].categoryName}
-                    </div>
-                    <div className="text-lg text-red-600 font-semibold">
-                      {formatCurrency(Math.abs(monthlySummary.expenseBreakdown[0].total))}
+                    {/* Center label */}
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                      <span className="font-display text-2xl text-ink tnum">
+                        {formatCurrency(activeDonut ? activeDonut.value : expenseTotalExpense)}
+                      </span>
+                      <span className="mt-0.5 max-w-[8rem] truncate text-xs text-ink-muted">
+                        {activeDonut ? activeDonut.name : t('dashboard.monthlyExpenses')}
+                      </span>
                     </div>
                   </div>
-                </div>
-              </Card>
-            )}
-            
-            {/* AI Insights Card (Beta) */}
-            <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-gray-800 dark:to-gray-900 border-indigo-200 dark:border-gray-700 mt-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex items-start gap-4 flex-1">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center text-white flex-shrink-0 mt-1">
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+                  {/* Legend */}
+                  <div className="grid w-full grid-cols-2 gap-x-4 gap-y-1.5">
+                    {expenseChartData.map((entry, index) => (
+                      <div
+                        key={entry.name}
+                        className="flex items-center justify-between gap-2 text-xs"
+                        onMouseEnter={() => setHoveredCategory(index)}
+                        onMouseLeave={() => setHoveredCategory(null)}
+                      >
+                        <span className="flex min-w-0 items-center gap-1.5">
+                          <span
+                            className="h-2 w-2 shrink-0 rounded-full"
+                            style={{ background: entry.name === 'Other' ? theme.neutral : theme.colors[index % theme.colors.length] }}
+                          />
+                          <span className="truncate text-ink-muted">{entry.name}</span>
+                        </span>
+                        <span className="font-mono tnum text-ink-faint">{(entry.share * 100).toFixed(0)}%</span>
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-50 flex items-center gap-2">
-                      {t('dashboard.aiInsightsLabel')} <span className="text-xs font-medium bg-indigo-200 text-indigo-800 px-2 py-1 rounded">Beta</span>
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      {t('dashboard.aiInsightsDescription')}
-                    </p>
+                </div>
+              ) : (
+                <div className="flex h-52 items-center justify-center text-sm text-ink-faint">{t('dashboard.noExpenses')}</div>
+              )}
+            </Card>
+          </div>
+
+          {/* Top spending highlight */}
+          {monthlySummary && monthlySummary.expenseBreakdown.length > 0 && (
+            <Card className="mt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="eyebrow">{t('dashboard.topSpendingCategory')}</p>
+                  <p className="mt-1 text-sm text-ink-muted">{t('dashboard.topSpendingDescription')}</p>
+                </div>
+                <div className="text-right">
+                  <div className="font-display text-xl text-ink">{monthlySummary.expenseBreakdown[0].categoryName}</div>
+                  <div className="font-mono text-lg font-semibold text-danger tnum">
+                    {formatCurrency(Math.abs(monthlySummary.expenseBreakdown[0].total))}
                   </div>
                 </div>
-                <Button 
-                  variant="outline"
-                  className="flex-shrink-0"
-                  disabled
-                >
-                  {t('common.comingSoon')}
-                </Button>
               </div>
             </Card>
-          </>
-        )}
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function SummaryTile({ label, value, tone }: { label: string; value: string; tone: 'success' | 'danger' }) {
+  return (
+    <div className="rounded-card border border-line bg-app-surface shadow-card p-5 transition-transform duration-150 hover:-translate-y-0.5">
+      <p className="eyebrow">{label}</p>
+      <div className={`mt-2 font-mono text-2xl font-semibold tnum tracking-tight ${tone === 'success' ? 'text-success' : 'text-danger'}`}>
+        {value}
       </div>
     </div>
   );

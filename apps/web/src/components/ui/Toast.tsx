@@ -14,12 +14,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     const options = {
       duration: 4000,
       style: {
-        background: '#fff',
-        color: '#1f2937',
+        background: 'var(--bg-elevated)',
+        color: 'var(--text-primary)',
         padding: '12px 16px',
         borderRadius: '8px',
-        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
-        border: '1px solid #e5e7eb',
+        boxShadow: 'var(--shadow-pop)',
+        border: '1px solid var(--border-subtle)',
+        fontSize: '0.875rem',
       },
     };
 
@@ -28,28 +29,28 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         toast.success(message, {
           ...options,
           icon: '✓',
-          style: { ...options.style, borderColor: '#10b981', color: '#059669' },
+          style: { ...options.style, color: 'var(--success)' },
         });
         break;
       case 'error':
         toast.error(message, {
           ...options,
           icon: '✕',
-          style: { ...options.style, borderColor: '#ef4444', color: '#dc2626' },
+          style: { ...options.style, color: 'var(--danger)' },
         });
         break;
       case 'warning':
         toast(message, {
           ...options,
           icon: '⚠',
-          style: { ...options.style, borderColor: '#f59e0b', color: '#d97706' },
+          style: { ...options.style, color: 'var(--warning)' },
         });
         break;
       default:
         toast(message, {
           ...options,
           icon: 'ℹ',
-          style: { ...options.style, borderColor: '#3b82f6', color: '#2563eb' },
+          style: { ...options.style, color: 'var(--accent-color)' },
         });
     }
   };

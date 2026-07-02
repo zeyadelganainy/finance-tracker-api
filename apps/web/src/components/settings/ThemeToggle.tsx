@@ -10,7 +10,7 @@ export function ThemeToggle() {
         <button
           key={mode}
           onClick={() => setThemeMode(mode)}
-          className={`px-3 py-2 rounded-lg border text-sm ${settings.themeMode===mode ? 'bg-[color:rgba(59,130,246,0.1)] text-[var(--accent-color)] border-[var(--accent-color)]' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+          className={`rounded-md border px-3 py-2 text-sm transition-colors ${settings.themeMode===mode ? 'border-accent bg-accent-soft text-accent' : 'border-line-strong text-ink-muted hover:bg-app-elevated hover:text-ink'}`}
         >
           {t(`settings.${mode}`)}
         </button>
