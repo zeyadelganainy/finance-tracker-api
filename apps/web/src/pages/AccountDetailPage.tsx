@@ -47,7 +47,6 @@ export function AccountDetailPage() {
         console.error('Account ID is undefined');
         return [];
       }
-      console.log('Fetching snapshots for account:', id);
       return apiFetch<AccountSnapshot[]>(`/accounts/${id}/snapshots`);
     },
     enabled: !!id && !!account,

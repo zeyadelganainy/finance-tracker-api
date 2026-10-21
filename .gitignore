@@ -11,18 +11,10 @@ appsettings.Development.json
 # OS junk
 .DS_Store
 Thumbs.db
-/.vs/
-.vs/FinanceTracker/CopilotIndices/18.0.981.45449/CodeChunks.db-wal
-.vs/FinanceTracker/CopilotIndices/18.0.981.45449/SemanticSymbols.db-wal
-.vs/FinanceTracker/CopilotIndices/18.0.981.45449/CodeChunks.db-wal
-.vs/FinanceTracker/CopilotIndices/18.0.981.45449/SemanticSymbols.db-wal
-/.vs/FinanceTracker/CopilotIndices/18.0.981.45449/CodeChunks.db-wal
-/.vs/FinanceTracker/CopilotIndices/18.0.981.45449/SemanticSymbols.db-wal
-/.vs/FinanceTracker/CopilotIndices/18.0.981.45449/CodeChunks.db
-/.vs/FinanceTracker/CopilotIndices/18.0.981.45449/SemanticSymbols.db
-/.vs/FinanceTracker/v18/DocumentLayout.backup.json
-/.vs/FinanceTracker/v18/DocumentLayout.json
-/.vs/FinanceTracker/v18/.suo
-/.vs/FinanceTracker/v18/TestStore/0/testlog.manifest
-.vs/FinanceTracker/CopilotIndices/18.0.981.45449/CodeChunks.db-shm
-.vs/FinanceTracker/CopilotIndices/18.0.981.45449/SemanticSymbols.db-shm
+
+# IDE
+.vs/
+
+# Node / build
+node_modules/
+dist/

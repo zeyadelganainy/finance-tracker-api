@@ -1,228 +1,89 @@
 # WealthWise
 
-A personal wealth-tracking system with a React frontend and a .NET API backend. Track transactions, manage accounts and assets, and monitor net worth over time — presented as a calm, data-dense **"private banking terminal"** rather than a generic budgeting app.
+A personal finance tracker for income, expenses, accounts, assets, ROI and net worth.
+**Live:** https://wealthwise-sable.vercel.app (use **Continue as Demo** on the sign-in page to explore a pre-seeded account).
 
-## Live System
+## The problem
 
-**Frontend**: https://wealthwise-sable.vercel.app
-**API**: https://ugwm6qnmpp.us-east-2.awsapprunner.com
+Most budgeting apps track spending but not what you own. WealthWise keeps transactions, account
+balances and investments (stocks, ETFs, gold) in one place, values them at live market prices in
+your chosen currency, and rolls everything up into a net-worth history.
 
-## Design
+## Key design decisions
 
-WealthWise uses a deliberate, high-end fintech aesthetic — think Bloomberg Terminal meets a private wealth report.
+- **The API owns the data rules, not the client.** Every query is scoped to the user ID taken from a
+  verified JWT, so one user can never read or change another user's rows. Supabase row-level
+  security policies (`supabase/rls-policies.sql`) add a second layer in the database, and
+  `MultiUserIsolationTests` checks the isolation through the real HTTP pipeline.
+- **Auth is delegated, verification is not.** Sign-in is handled by Supabase Auth, but the .NET API
+  validates every token itself against Supabase's JWKS endpoint (issuer, audience and signing key),
+  instead of trusting the front end.
+- **Money is `decimal`, never floating point.** Amounts, balances, quantities and cost basis are
+  stored as `decimal` so totals and ROI do not drift from rounding.
+- **External prices are cached and isolated.** Quotes (Finnhub), gold spot prices (Gold-API) and FX
+  rates (exchangerate.host) go through one `MarketDataService` with a 15-minute cache, so a slow or
+  rate-limited provider does not break the dashboard.
+- **Imports deduplicate.** CSV and OFX/QFX bank-statement imports hash each row on account, date,
+  amount and normalized description, and skip rows that already exist, so re-importing a statement
+  does not double-count.
+- **A safe public demo.** The demo button signs into a dedicated seeded account; visitors never see
+  real data, and the seed scripts in `supabase/` are idempotent so the demo can be reset safely.
 
-- **Dark-first theming** with a warm light mode, switched via a single class on `<html>`. All colors are semantic CSS custom properties (`--bg-surface`, `--text-primary`, `--accent-color`, …) mapped into Tailwind, so the whole app re-themes instantly.
-- **Signature palette**: deep charcoal surfaces with a muted **champagne-gold** accent; desaturated success/danger/warning states.
-- **Typography pairing**: `Playfair Display` (serif) for the net-worth hero and headings, `Inter` for UI, and `JetBrains Mono` with tabular figures for every monetary value.
-- **Custom accent colors**: gold (default), sage, slate, rose, stone — remapped onto the token system.
-- **Charts as a first-class surface**: a shared theme (`src/lib/chartTheme.ts`) drives every Recharts component — muted palette, thin lines, gradient area fills, thick donuts, minimal gridlines, themed tooltips — no default library styling anywhere.
+## Tech stack
 
-See [CLAUDE.md](./CLAUDE.md) for the full design brief.
+- **API:** C#, .NET 9, ASP.NET Core, Entity Framework Core 9, deployed on AWS App Runner (Docker, via GitHub Actions)
+- **Front end:** React 19, TypeScript (strict), Vite, TanStack Query, react-hook-form, zod, Recharts, Tailwind, deployed on Vercel
+- **Data and auth:** PostgreSQL on Supabase, Supabase Auth (JWT)
+- **Localization:** English and Canadian French
 
-## Architecture
+## Run it locally
 
-**Frontend**:
-- React 19 + TypeScript (strict)
-- Vite for development and bundling
-- TailwindCSS with a semantic design-token system
-- Recharts for data visualization
-- TanStack Query for data fetching, react-i18next for localization
-- Deployed on Vercel
-
-**Backend**:
-- .NET 9 REST API
-- Entity Framework Core 9 with PostgreSQL
-- JWT authentication via Supabase Auth (JWKS, RS256)
-- Deployed on AWS App Runner (us-east-2)
-
-**Database**:
-- PostgreSQL 16 (hosted on Supabase)
-- Row-level security policies for multi-user data isolation
-
-**Market data integrations**:
-- **Finnhub** — live stock/ETF quotes
-- **Gold-API** — live gold spot price (by weight unit)
-- **exchangerate.host** — FX conversion for multi-currency portfolios
-
-## Demo Mode
-
-The system includes a "Continue as Demo" option that logs into a pre-seeded demo account containing sample transactions, categories, accounts, and a diversified asset portfolio. New users start with empty data and add their own.
-
-## Repository Structure
-
-```
-finance-tracker/
-├── apps/
-│   ├── api/              # .NET 9 REST API
-│   │   ├── FinanceTracker/
-│   │   └── FinanceTracker.Tests/
-│   └── web/              # React + Vite frontend
-│       └── src/
-│           ├── components/   # UI primitives + feature components
-│           ├── pages/        # Route-level screens
-│           ├── lib/          # api client, chartTheme, utils
-│           └── settings/     # theme/accent/locale/currency
-├── supabase/             # Migrations, RLS policies, and seed scripts
-├── .github/workflows/    # CI/CD pipelines
-└── API.md                # API documentation
-```
-
-## Local Development
-
-### Prerequisites
-
-- .NET 9 SDK
-- Node.js 18+
-- PostgreSQL (or use the Supabase-hosted database)
-
-### Running the API
+Prerequisites: .NET 9 SDK, Node.js 18+, and a PostgreSQL database (local or Supabase).
 
 ```bash
+# API: http://localhost:5000 (OpenAPI docs at /scalar in development)
 cd apps/api/FinanceTracker
-dotnet restore
 dotnet run
-```
 
-API runs at `http://localhost:5000`. In development, OpenAPI docs are available at `http://localhost:5000/scalar`.
-
-### Running the Frontend
-
-```bash
+# Front end: http://localhost:5173
 cd apps/web
 npm install
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`.
+Configuration lives in `apps/api/FinanceTracker/appsettings.Development.json` (connection string,
+Supabase issuer, CORS origins) and `apps/web/.env` (`VITE_API_BASE_URL`, `VITE_SUPABASE_URL`,
+`VITE_SUPABASE_ANON_KEY`, and optional demo account credentials). Both files are gitignored.
+Endpoint documentation is in [API.md](./API.md).
 
-### Configuration
-
-**API** (`apps/api/FinanceTracker/appsettings.Development.json`):
-```json
-{
-  "ConnectionStrings": {
-    "Default": "Host=localhost;Database=financetracker;Username=...;Password=..."
-  },
-  "Auth": {
-    "Issuer": "https://sltityabtomzdavnlinv.supabase.co/auth/v1",
-    "Audience": "authenticated"
-  },
-  "Cors": {
-    "AllowedOrigins": ["http://localhost:5173"]
-  }
-}
-```
-
-**Frontend** (`apps/web/.env`):
-```bash
-VITE_API_BASE_URL=http://localhost:5000
-VITE_SUPABASE_URL=https://sltityabtomzdavnlinv.supabase.co
-VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
-# Optional — enables the "Continue as Demo" button
-VITE_DEMO_EMAIL=<demo-account-email>
-VITE_DEMO_PASSWORD=<demo-account-password>
-```
-
-### Seeding Demo Data
-
-Idempotent SQL scripts live in `supabase/` and are run via the Supabase SQL Editor (or `psql`):
-
-- `seed-2026-recent-months.sql` — several recent months of transactions plus monthly account snapshots for net-worth history.
-- `seed-demo-assets.sql` — a diversified portfolio (stocks, ETF, gold) that exercises the Finnhub, Gold-API, and exchangerate.host integrations.
-
-Each script skips data that already exists, so they are safe to re-run.
-
-### Running Tests
+## How it's tested
 
 ```bash
-cd apps/api
-dotnet test
+dotnet test FinanceTracker.sln
 ```
 
-The API includes 151 integration tests covering all endpoints, validation, error handling, and multi-user data isolation.
+158 xUnit integration tests run the API in-process with `WebApplicationFactory` and cover the
+transaction, category, account, asset, net-worth and summary endpoints, request validation, error handling, the market-data and ROI services, and multi-user
+isolation. CI runs the full suite on every push and pull request, and a deploy to App Runner only
+happens after it passes, followed by a health check (`/health`).
 
-## Deployment
+## Known limitations and next steps
 
-### Frontend (Vercel)
+- **Tests use EF Core's in-memory provider**, so PostgreSQL-specific behaviour (unique constraints,
+  row-level security) is not exercised by the suite. Next: run the integration tests against a
+  real PostgreSQL container.
+- **Editing a transaction in the web client still deletes and re-creates it**, even though the API
+  now has a `PUT /transactions/{id}` endpoint. Switching the client over is the next fix, since the
+  current approach changes the transaction's ID and is not atomic.
+- **There are no front-end tests yet.** The front end is checked by the TypeScript build only.
+- Budgets, spending alerts and recurring transactions are not built. The "AI Assistant" page is a
+  placeholder.
 
-Automatic deployments on push to `main`. Environment variables in Vercel:
-- `VITE_API_BASE_URL` — Production API URL
-- `VITE_SUPABASE_URL` — Supabase project URL
-- `VITE_SUPABASE_ANON_KEY` — Supabase anonymous key
+## How it was built
 
-### Backend (AWS App Runner)
-
-Automatic deployments via GitHub Actions on push to `main`:
-1. Run tests
-2. Build Docker image
-3. Push to Amazon ECR (us-east-2)
-4. Deploy to App Runner
-5. Health check verification
-
-Deployment time: ~8–12 minutes from push to live.
-
-## Key Features
-
-**Transactions**
-- Track income and expenses with categories, dates, and descriptions
-- Full CRUD with inline editing and bulk select/delete
-- Clean data table (mono, right-aligned amounts) on desktop; card list on mobile
-- CSV and OFX/QFX bank-statement import with column mapping and deduplication
-
-**Categories**
-- User-defined income/expense categories with dependency-checked deletion
-- Create categories inline from the transaction flow
-
-**Accounts**
-- Bank, credit, investment, and liability accounts
-- Manual balance snapshots with a gold-gradient balance-history chart
-
-**Assets & Portfolio**
-- Track stocks, ETFs, and gold with cost basis and quantity
-- Live market pricing with automatic ROI, unrealized gain/loss, and multi-currency FX
-- Portfolio allocation donut, sector breakdown, and per-asset ROI badges
-
-**Net Worth & Analytics**
-- Net-worth hero figure (serif, count-up) with an area-chart trend
-- Monthly income/expense summaries and a category-breakdown donut
-- Portfolio ROI across all assets
-
-**Experience**
-- Dark/light mode with customizable accent colors
-- Responsive layout: sidebar on desktop, bottom tab bar on mobile
-- Multi-language support (English, French-Canadian) and currency selection
-- `prefers-reduced-motion` respected; skeleton loaders for async data
-
-**Multi-User Support**
-- Each user's data is isolated via row-level filtering and JWT auth
-
-## Roadmap
-
-- Budget tracking and spending alerts
-- Recurring transaction automation
-- AI-assisted insights (currently a Beta placeholder)
-
-## Tech Details
-
-**Frontend design system**: semantic CSS-variable tokens → Tailwind utilities; shared chart theme; no hardcoded palette colors in components.
-
-**Backend testing**: 151 integration tests with an in-memory database.
-
-**Database optimization**: indexed transaction dates/categories, unique constraints on categories and account snapshots, row-level security.
-
-**Authentication flow**:
-1. User authenticates with Supabase Auth (frontend)
-2. Supabase returns a JWT
-3. Frontend includes the token in API requests
-4. API validates the token via the JWKS endpoint
-5. User-scoped queries filter by the authenticated user ID
-
-**CORS**: the API allows the Vercel frontend and localhost; wildcard origins are rejected in production.
-
-## API Documentation
-
-See [API.md](./API.md) for authentication, endpoints, request/response formats, and error handling.
+I used Claude Code for implementation while making the architecture decisions and reviewing the
+output myself. [CLAUDE.md](./CLAUDE.md) is the brief that governed the front-end redesign.
 
 ## License
 
-MIT
+All rights reserved. The code is public for review and is not licensed for reuse.
